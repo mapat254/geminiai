@@ -177,7 +177,7 @@ def format_content_with_images(content, images, title, meta_description):
     
     return '\n'.join(formatted_content)
 
-def generate_blog_html(title, content, meta_description, images, site_name="My Blog", site_description=""):
+def generate_blog_html(title, content, meta_description, images, site_name="My Blog", site_description="", all_articles=None):
     """Generate complete blog HTML using the template"""
     featured_image = images[0]["url"] if images else ""
     read_time = len(content.split()) // 200  # Assuming 200 words per minute reading speed
@@ -185,21 +185,29 @@ def generate_blog_html(title, content, meta_description, images, site_name="My B
     # Format content with images
     content_with_images = format_content_with_images(content, images, title, meta_description)
     
-    # Generate related articles (placeholder)
-    related_articles = [
-        {
-            "title": "Related Article 1",
-            "url": "#",
-            "image": images[1]["url"] if len(images) > 1 else "",
-            "excerpt": "Sample excerpt for related article 1"
-        },
-        {
-            "title": "Related Article 2",
-            "url": "#",
-            "image": images[2]["url"] if len(images) > 2 else "",
-            "excerpt": "Sample excerpt for related article 2"
-        }
-    ]
+    # Generate related articles from actual articles
+    related_articles = []
+    if all_articles:
+        # Filter out current article and get up to 2 random articles
+        other_articles = [a for a in all_articles if a["title"] != title]
+        selected_articles = random.sample(other_articles, min(2, len(other_articles)))
+        
+        for article in selected_articles:
+            related_articles.append({
+                "title": article["title"],
+                "url": article["filename"],
+                "image": images[1]["url"] if len(images) > 1 else "",
+                "excerpt": meta_description[:100] + "..."
+            })
+    
+    # If we don't have enough related articles, pad with placeholders
+    while len(related_articles) < 2:
+        related_articles.append({
+            "title": "Explore More Articles",
+            "url": "/",
+            "image": images[-1]["url"] if images else "",
+            "excerpt": "Discover more interesting articles on our site"
+        })
     
     # Render template
     html = BLOG_TEMPLATE.render(
@@ -216,6 +224,66 @@ def generate_blog_html(title, content, meta_description, images, site_name="My B
     )
     
     return html
+
+def process_bulk_topics(topics):
+    """Process multiple topics and generate articles"""
+    generated_articles = []
+    
+    for topic in topics:
+        topic = topic.strip()
+        if not topic:
+            continue
+            
+        try:
+            with st.spinner(f"Generating article for: {topic}"):
+                # Generate content
+                model = genai.GenerativeModel(model_name=st.session_state.model)
+                title = generate_engaging_title(model, topic)
+                meta_description = generate_meta_description(model, topic, title)
+                content = generate_article_content(model, topic, title)
+                
+                # Search for images
+                images = search_bing_images(topic)
+                
+                # Generate HTML with access to all previously generated articles
+                html = generate_blog_html(
+                    title=title,
+                    content=content,
+                    meta_description=meta_description,
+                    images=images,
+                    site_name=st.session_state.get('site_name', 'My Blog'),
+                    site_description=st.session_state.get('site_description', ''),
+                    all_articles=generated_articles  # Pass existing articles
+                )
+                
+                # Create filename
+                filename = f"{clean_filename(title)}.html"
+                
+                generated_articles.append({
+                    "title": title,
+                    "filename": filename,
+                    "html": html,
+                    "meta_description": meta_description
+                })
+            
+        except Exception as e:
+            st.error(f"Error processing topic '{topic}': {str(e)}")
+    
+    # After all articles are generated, update their related articles sections
+    for i, article in enumerate(generated_articles):
+        # Regenerate HTML with access to all articles
+        html = generate_blog_html(
+            title=article["title"],
+            content=article["content"] if "content" in article else "",
+            meta_description=article["meta_description"],
+            images=search_bing_images(article["title"]),  # Re-fetch images if needed
+            site_name=st.session_state.get('site_name', 'My Blog'),
+            site_description=st.session_state.get('site_description', ''),
+            all_articles=generated_articles
+        )
+        generated_articles[i]["html"] = html
+    
+    return generated_articles
 
 def create_github_export(articles, site_name, site_description):
     """Create a GitHub-ready export of the blog"""
@@ -321,50 +389,6 @@ MIT
     shutil.make_archive(export_dir, 'zip', export_dir)
     
     return f"{export_dir}.zip"
-
-def process_bulk_topics(topics):
-    """Process multiple topics and generate articles"""
-    generated_articles = []
-    
-    for topic in topics:
-        topic = topic.strip()
-        if not topic:
-            continue
-            
-        try:
-            with st.spinner(f"Generating article for: {topic}"):
-                # Generate content
-                model = genai.GenerativeModel(model_name=st.session_state.model)
-                title = generate_engaging_title(model, topic)
-                meta_description = generate_meta_description(model, topic, title)
-                content = generate_article_content(model, topic, title)
-                
-                # Search for images
-                images = search_bing_images(topic)
-                
-                # Generate HTML
-                html = generate_blog_html(
-                    title=title,
-                    content=content,
-                    meta_description=meta_description,
-                    images=images,
-                    site_name=st.session_state.get('site_name', 'My Blog'),
-                    site_description=st.session_state.get('site_description', '')
-                )
-                
-                # Create filename
-                filename = f"{clean_filename(title)}.html"
-                
-                generated_articles.append({
-                    "title": title,
-                    "filename": filename,
-                    "html": html
-                })
-            
-        except Exception as e:
-            st.error(f"Error processing topic '{topic}': {str(e)}")
-    
-    return generated_articles
 
 # Initialize session state
 if 'api_key' not in st.session_state:
