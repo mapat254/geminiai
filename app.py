@@ -1,6 +1,10 @@
 import streamlit as st
 import google.generativeai as genai
 from dotenv import load_dotenv
+import requests
+from bs4 import BeautifulSoup
+import json
+import markdown
 
 # Load environment variables
 load_dotenv()
@@ -36,8 +40,56 @@ st.markdown("""
         color: #DC2626;
         font-weight: 600;
     }
+    .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .image-card {
+        flex: 1;
+        min-width: 200px;
+        max-width: 300px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .image-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+def search_bing_images(query, num_images=5):
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        search_url = f'https://www.bing.com/images/search?q={query}&form=HDRSC2'
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        images = []
+        for img in soup.find_all('a', class_='iusc'):
+            try:
+                m = json.loads(img['m'])
+                image_url = m['murl']
+                images.append({
+                    'url': image_url,
+                    'title': m.get('t', 'Image')
+                })
+                if len(images) >= num_images:
+                    break
+            except:
+                continue
+        
+        return images
+    except Exception as e:
+        st.error(f"Error searching images: {str(e)}")
+        return []
 
 # App title
 st.markdown('<div class="main-title">AI Content Generator</div>', unsafe_allow_html=True)
@@ -47,6 +99,10 @@ if 'api_key' not in st.session_state:
     st.session_state.api_key = ''
 if 'model' not in st.session_state:
     st.session_state.model = 'gemini-1.5-flash'
+if 'generated_content' not in st.session_state:
+    st.session_state.generated_content = None
+if 'images' not in st.session_state:
+    st.session_state.images = []
 
 # Sidebar configuration
 with st.sidebar:
@@ -101,17 +157,35 @@ if input_method == "Enter text manually":
             st.error("Please enter some text to process.")
         else:
             try:
-                # Initialize the model
-                model = genai.GenerativeModel(
-                    model_name=st.session_state.model
-                )
-                
-                # Generate content
-                response = model.generate_content(user_input)
+                with st.spinner("Generating content..."):
+                    # Initialize the model
+                    model = genai.GenerativeModel(
+                        model_name=st.session_state.model
+                    )
+                    
+                    # Generate content
+                    response = model.generate_content(user_input)
+                    st.session_state.generated_content = response.text
+                    
+                    # Search for relevant images
+                    st.session_state.images = search_bing_images(user_input)
                 
                 # Display result
-                st.markdown("### Result")
-                st.markdown(response.text)
+                st.markdown("### Generated Content")
+                st.markdown(st.session_state.generated_content)
+                
+                # Display images after the first paragraph
+                if st.session_state.images:
+                    st.markdown("### Related Images")
+                    st.markdown('<div class="image-gallery">', unsafe_allow_html=True)
+                    for image in st.session_state.images:
+                        st.markdown(f"""
+                            <div class="image-card">
+                                <img src="{image['url']}" alt="{image['title']}">
+                                <p>{image['title']}</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
@@ -126,17 +200,35 @@ else:  # File upload
                 st.error("Please configure your API key in the sidebar first.")
             else:
                 try:
-                    # Initialize the model
-                    model = genai.GenerativeModel(
-                        model_name=st.session_state.model
-                    )
-                    
-                    # Generate content
-                    response = model.generate_content(content)
+                    with st.spinner("Processing file..."):
+                        # Initialize the model
+                        model = genai.GenerativeModel(
+                            model_name=st.session_state.model
+                        )
+                        
+                        # Generate content
+                        response = model.generate_content(content)
+                        st.session_state.generated_content = response.text
+                        
+                        # Search for relevant images
+                        st.session_state.images = search_bing_images(content[:100])  # Use first 100 chars for image search
                     
                     # Display result
-                    st.markdown("### Result")
-                    st.markdown(response.text)
+                    st.markdown("### Generated Content")
+                    st.markdown(st.session_state.generated_content)
+                    
+                    # Display images after the first paragraph
+                    if st.session_state.images:
+                        st.markdown("### Related Images")
+                        st.markdown('<div class="image-gallery">', unsafe_allow_html=True)
+                        for image in st.session_state.images:
+                            st.markdown(f"""
+                                <div class="image-card">
+                                    <img src="{image['url']}" alt="{image['title']}">
+                                    <p>{image['title']}</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
                     
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
