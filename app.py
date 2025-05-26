@@ -95,28 +95,19 @@ def generate_engaging_title(model, topic):
     """Generate a professional and SEO-friendly title"""
     current_time = int(time.time())
     title_prompt = f"""
-    As a professional SEO content strategist and headline expert, create ONE compelling, 
-    click-worthy, and search-optimized title about: {topic}
+    Create one engaging and professional title about: {topic}
     Current timestamp: {current_time}
 
-    Requirements:
-    - Length: 50-60 characters
-    - Include primary keyword naturally
-    - Use power words that drive engagement
-    - Create curiosity without clickbait
-    - Ensure uniqueness and originality
-    - Focus on value proposition
-    - Include numbers or specific benefits when relevant
+    Make it:
+    - Natural and compelling
+    - 50-60 characters long
+    - Include the main topic naturally
+    - Professional but engaging
+    - Unique and original
+    - Focus on value
+    - Include specific benefits when relevant
     
-    Advanced SEO techniques:
-    - Front-load important keywords
-    - Use proven headline structures
-    - Include emotional triggers
-    - Maintain professional tone
-    - Ensure search intent alignment
-    
-    Return ONLY the title, no explanations or additional text.
-    Make it compelling for both search engines and readers.
+    Return only the title itself, no additional text or formatting.
     """
     
     generation_config = genai.types.GenerationConfig(
@@ -179,7 +170,10 @@ def format_content_with_images(content, images, title):
         formatted_content += f'<img src="{images[0]["url"]}" alt="{images[0]["title"]}" class="content-image">'
     
     for i, paragraph in enumerate(paragraphs):
-        formatted_content += f'<div class="content-paragraph">{paragraph}</div>'
+        # Remove markdown headings and formatting
+        clean_paragraph = paragraph.replace('#', '').strip()
+        clean_paragraph = clean_paragraph.replace('***', '').replace('**', '').replace('*', '')
+        formatted_content += f'<div class="content-paragraph">{clean_paragraph}</div>'
         
         image_index = i + 1
         if image_index < len(images) - 5:
@@ -258,38 +252,23 @@ def generate_content(input_text):
             
             current_time = int(time.time())
             content_prompt = f"""
-            As a professional content strategist and SEO expert, create a comprehensive, 
-            engaging, and highly valuable article about: {input_text}
+            Write a comprehensive and engaging article about: {input_text}
             Title: {st.session_state.generated_title}
             Current timestamp: {current_time}
             
-            Content Requirements:
-            - Length: 3000 words exactly
-            - Optimize for both readers and search engines
-            - Include relevant keywords naturally
-            - Use data-driven insights and statistics
-            - Incorporate expert opinions and research
-            - Follow E-E-A-T principles
-            - Ensure original, unique perspectives
-            - Include practical, actionable advice
+            Guidelines:
+            - Write naturally, as if for a professional blog or magazine
+            - Length: 3000 words
+            - Include relevant examples and case studies
+            - Share practical advice and actionable tips
+            - Use a conversational yet professional tone
+            - Break complex topics into digestible sections
+            - Include relevant data and expert insights
+            - Focus on providing value to the reader
             
-            Structure:
-            1. Engaging introduction with value proposition (300 words)
-            2. Comprehensive background with latest trends (400 words)
-            3. In-depth analysis with expert insights (1500 words)
-            4. Practical implementation guide (400 words)
-            5. Case studies and real-world examples (300 words)
-            6. Actionable conclusion with next steps (100 words)
-            
-            SEO Optimization:
-            - Use proper heading hierarchy (H2, H3, H4)
-            - Include relevant LSI keywords
-            - Optimize for featured snippets
-            - Create scannable content with bullet points
-            - Include expert quotes and citations
-            - Focus on user intent satisfaction
-            
-            Make every section unique, valuable, and optimized for both search engines and readers.
+            Structure the content naturally with clear sections, but do not use explicit headings or markdown formatting.
+            Make the content flow smoothly from one topic to the next.
+            Focus on readability and engagement while maintaining professionalism.
             """
             
             generation_config = genai.types.GenerationConfig(
