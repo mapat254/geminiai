@@ -72,11 +72,15 @@ st.markdown("""
         height: 200px;
         object-fit: cover;
         border-radius: 8px;
-        transition: transform 0.3s ease;
+        transition: all 0.3s ease;
         cursor: pointer;
+        position: relative;
+        z-index: 1;
     }
     .gallery-image:hover {
-        transform: scale(1.05);
+        transform: scale(2);
+        z-index: 999;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
     }
     .gallery-title {
         font-size: 1.5rem;
@@ -193,7 +197,7 @@ def format_content_with_images(content, images, title):
     # Add image gallery
     formatted_content += '<div class="gallery-title">Image Gallery</div>'
     formatted_content += '<div class="image-gallery">'
-    for img in images[-6:]:  # Use last 5 images for gallery
+    for img in images[-5:]:  # Use last 5 images for gallery
         formatted_content += f'<img src="{img["url"]}" alt="{img["title"]}" class="gallery-image" onclick="window.open(this.src)">'
     formatted_content += '</div>'
     
