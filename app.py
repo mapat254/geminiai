@@ -84,18 +84,23 @@ def generate_article_content(model, topic, title):
     
     Requirements:
     - 2000-3000 words
-    - Format the content in HTML with proper structure
-    - Use <h2> for main sections
-    - Use <h3> for subsections
-    - Use <p> for paragraphs
-    - Use <ul> and <li> for lists
+    - Return the content in clean HTML format using these tags:
+      - <h2> for main sections
+      - <h3> for subsections
+      - <p> for paragraphs
+      - <ul> and <li> for unordered lists
+      - <ol> and <li> for ordered lists
+      - <strong> for emphasis
+      - <em> for italics
+      - <blockquote> for quotes
     - Include relevant statistics and examples
-    - Add proper spacing between sections
-    - Make content visually appealing and easy to read
+    - Make content visually appealing with proper spacing
     - Include a strong introduction and conclusion
     - Add calls-to-action where appropriate
+    - Use proper HTML structure
+    - NO markdown formatting
     
-    Return the content in clean HTML format.
+    Return ONLY the HTML content, no additional text or formatting.
     """
     
     generation_config = {
@@ -225,66 +230,6 @@ def generate_blog_html(title, content, meta_description, images, site_name="My B
     
     return html
 
-def process_bulk_topics(topics):
-    """Process multiple topics and generate articles"""
-    generated_articles = []
-    
-    for topic in topics:
-        topic = topic.strip()
-        if not topic:
-            continue
-            
-        try:
-            with st.spinner(f"Generating article for: {topic}"):
-                # Generate content
-                model = genai.GenerativeModel(model_name=st.session_state.model)
-                title = generate_engaging_title(model, topic)
-                meta_description = generate_meta_description(model, topic, title)
-                content = generate_article_content(model, topic, title)
-                
-                # Search for images
-                images = search_bing_images(topic)
-                
-                # Generate HTML with access to all previously generated articles
-                html = generate_blog_html(
-                    title=title,
-                    content=content,
-                    meta_description=meta_description,
-                    images=images,
-                    site_name=st.session_state.get('site_name', 'My Blog'),
-                    site_description=st.session_state.get('site_description', ''),
-                    all_articles=generated_articles  # Pass existing articles
-                )
-                
-                # Create filename
-                filename = f"{clean_filename(title)}.html"
-                
-                generated_articles.append({
-                    "title": title,
-                    "filename": filename,
-                    "html": html,
-                    "meta_description": meta_description
-                })
-            
-        except Exception as e:
-            st.error(f"Error processing topic '{topic}': {str(e)}")
-    
-    # After all articles are generated, update their related articles sections
-    for i, article in enumerate(generated_articles):
-        # Regenerate HTML with access to all articles
-        html = generate_blog_html(
-            title=article["title"],
-            content=article["content"] if "content" in article else "",
-            meta_description=article["meta_description"],
-            images=search_bing_images(article["title"]),  # Re-fetch images if needed
-            site_name=st.session_state.get('site_name', 'My Blog'),
-            site_description=st.session_state.get('site_description', ''),
-            all_articles=generated_articles
-        )
-        generated_articles[i]["html"] = html
-    
-    return generated_articles
-
 def create_github_export(articles, site_name, site_description):
     """Create a GitHub-ready export of the blog"""
     # Create temporary directory for export
@@ -389,6 +334,67 @@ MIT
     shutil.make_archive(export_dir, 'zip', export_dir)
     
     return f"{export_dir}.zip"
+
+def process_bulk_topics(topics):
+    """Process multiple topics and generate articles"""
+    generated_articles = []
+    
+    for topic in topics:
+        topic = topic.strip()
+        if not topic:
+            continue
+            
+        try:
+            with st.spinner(f"Generating article for: {topic}"):
+                # Generate content
+                model = genai.GenerativeModel(model_name=st.session_state.model)
+                title = generate_engaging_title(model, topic)
+                meta_description = generate_meta_description(model, topic, title)
+                content = generate_article_content(model, topic, title)
+                
+                # Search for images
+                images = search_bing_images(topic)
+                
+                # Generate HTML with access to all previously generated articles
+                html = generate_blog_html(
+                    title=title,
+                    content=content,
+                    meta_description=meta_description,
+                    images=images,
+                    site_name=st.session_state.get('site_name', 'My Blog'),
+                    site_description=st.session_state.get('site_description', ''),
+                    all_articles=generated_articles  # Pass existing articles
+                )
+                
+                # Create filename
+                filename = f"{clean_filename(title)}.html"
+                
+                generated_articles.append({
+                    "title": title,
+                    "filename": filename,
+                    "html": html,
+                    "meta_description": meta_description,
+                    "content": content  # Store the content for regenerating HTML later
+                })
+            
+        except Exception as e:
+            st.error(f"Error processing topic '{topic}': {str(e)}")
+    
+    # After all articles are generated, update their related articles sections
+    for i, article in enumerate(generated_articles):
+        # Regenerate HTML with access to all articles
+        html = generate_blog_html(
+            title=article["title"],
+            content=article["content"],
+            meta_description=article["meta_description"],
+            images=search_bing_images(article["title"]),  # Re-fetch images if needed
+            site_name=st.session_state.get('site_name', 'My Blog'),
+            site_description=st.session_state.get('site_description', ''),
+            all_articles=generated_articles
+        )
+        generated_articles[i]["html"] = html
+    
+    return generated_articles
 
 # Initialize session state
 if 'api_key' not in st.session_state:
