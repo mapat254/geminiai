@@ -40,25 +40,24 @@ st.markdown("""
         color: #DC2626;
         font-weight: 600;
     }
-    .image-gallery {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 20px;
-    }
-    .image-card {
-        flex: 1;
-        min-width: 200px;
-        max-width: 300px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 10px;
-    }
-    .image-card img {
+    .content-image {
         width: 100%;
-        height: 200px;
+        max-height: 400px;
         object-fit: cover;
-        border-radius: 4px;
+        border-radius: 8px;
+        margin: 20px 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .content-paragraph {
+        margin: 20px 0;
+        line-height: 1.8;
+        font-size: 1.1rem;
+    }
+    .content-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 20px 0;
+        color: #1E40AF;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -90,6 +89,33 @@ def search_bing_images(query, num_images=5):
     except Exception as e:
         st.error(f"Error searching images: {str(e)}")
         return []
+
+def format_content_with_images(content, images):
+    # Split content into paragraphs
+    paragraphs = [p for p in content.split('\n\n') if p.strip()]
+    
+    # Format title (first line) separately
+    title = paragraphs[0].replace('#', '').strip()
+    paragraphs = paragraphs[1:]
+    
+    # Initialize formatted content with title
+    formatted_content = f'<div class="content-title">{title}</div>'
+    
+    # Add first image after title
+    if images:
+        formatted_content += f'<img src="{images[0]["url"]}" alt="{images[0]["title"]}" class="content-image">'
+    
+    # Interleave remaining paragraphs and images
+    for i, paragraph in enumerate(paragraphs):
+        # Add paragraph
+        formatted_content += f'<div class="content-paragraph">{paragraph}</div>'
+        
+        # Add image if available (skip first image as it's already used)
+        image_index = i + 1
+        if image_index < len(images):
+            formatted_content += f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">'
+    
+    return formatted_content
 
 # App title
 st.markdown('<div class="main-title">AI Content Generator</div>', unsafe_allow_html=True)
@@ -170,22 +196,12 @@ if input_method == "Enter text manually":
                     # Search for relevant images
                     st.session_state.images = search_bing_images(user_input)
                 
-                # Display result
-                st.markdown("### Generated Content")
-                st.markdown(st.session_state.generated_content)
-                
-                # Display images after the first paragraph
-                if st.session_state.images:
-                    st.markdown("### Related Images")
-                    st.markdown('<div class="image-gallery">', unsafe_allow_html=True)
-                    for image in st.session_state.images:
-                        st.markdown(f"""
-                            <div class="image-card">
-                                <img src="{image['url']}" alt="{image['title']}">
-                                <p>{image['title']}</p>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                # Format and display content with interleaved images
+                formatted_content = format_content_with_images(
+                    st.session_state.generated_content,
+                    st.session_state.images
+                )
+                st.markdown(formatted_content, unsafe_allow_html=True)
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
@@ -211,24 +227,14 @@ else:  # File upload
                         st.session_state.generated_content = response.text
                         
                         # Search for relevant images
-                        st.session_state.images = search_bing_images(content[:100])  # Use first 100 chars for image search
+                        st.session_state.images = search_bing_images(content[:100])
                     
-                    # Display result
-                    st.markdown("### Generated Content")
-                    st.markdown(st.session_state.generated_content)
-                    
-                    # Display images after the first paragraph
-                    if st.session_state.images:
-                        st.markdown("### Related Images")
-                        st.markdown('<div class="image-gallery">', unsafe_allow_html=True)
-                        for image in st.session_state.images:
-                            st.markdown(f"""
-                                <div class="image-card">
-                                    <img src="{image['url']}" alt="{image['title']}">
-                                    <p>{image['title']}</p>
-                                </div>
-                            """, unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
+                    # Format and display content with interleaved images
+                    formatted_content = format_content_with_images(
+                        st.session_state.generated_content,
+                        st.session_state.images
+                    )
+                    st.markdown(formatted_content, unsafe_allow_html=True)
                     
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
