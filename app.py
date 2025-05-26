@@ -62,6 +62,35 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def generate_engaging_title(model, topic):
+    """Generate a professional and engaging title"""
+    title_prompt = f"""
+    As a professional headline writer, create ONE compelling title for an article about: {topic}
+
+    The title should:
+    - Use power words that evoke emotion or curiosity
+    - Include a specific benefit or promise
+    - Be 50-60 characters long
+    - Use one of these formats:
+        - "The Secret to [Desired Outcome]: [Unexpected Approach]"
+        - "[Number] Hidden [Topic] Strategies That [Benefit]"
+        - "Why [Common Belief] Is Wrong: [Surprising Truth]"
+        - "Inside the [Topic]: [Intriguing Discovery]"
+        - "The [Adjective] Guide to [Topic] That [Benefit]"
+    
+    Focus on:
+    - Creating curiosity gaps
+    - Using specific numbers or data
+    - Adding emotional triggers
+    - Making bold claims (that the content can support)
+    - Using power words like: Essential, Proven, Secret, Hidden, Revolutionary
+
+    Return ONLY the title, no explanations or additional text.
+    """
+    
+    response = model.generate_content(title_prompt)
+    return response.text.strip().replace('"', '').replace('#', '').strip()
+
 def search_bing_images(query, num_images=5):
     try:
         headers = {
@@ -90,13 +119,9 @@ def search_bing_images(query, num_images=5):
         st.error(f"Error searching images: {str(e)}")
         return []
 
-def format_content_with_images(content, images):
+def format_content_with_images(content, images, title):
     # Split content into paragraphs
     paragraphs = [p for p in content.split('\n\n') if p.strip()]
-    
-    # Format title (first line) separately
-    title = paragraphs[0].replace('#', '').strip()
-    paragraphs = paragraphs[1:]
     
     # Initialize formatted content with title
     formatted_content = f'<div class="content-title">{title}</div>'
@@ -129,6 +154,8 @@ if 'generated_content' not in st.session_state:
     st.session_state.generated_content = None
 if 'images' not in st.session_state:
     st.session_state.images = []
+if 'generated_title' not in st.session_state:
+    st.session_state.generated_title = None
 
 # Sidebar configuration
 with st.sidebar:
@@ -189,8 +216,24 @@ if input_method == "Enter text manually":
                         model_name=st.session_state.model
                     )
                     
+                    # Generate engaging title first
+                    st.session_state.generated_title = generate_engaging_title(model, user_input)
+                    
                     # Generate content
-                    response = model.generate_content(user_input)
+                    content_prompt = f"""
+                    Write a detailed article about: {user_input}
+                    Use this title: {st.session_state.generated_title}
+                    
+                    Requirements:
+                    - Write in a professional, engaging style
+                    - Break content into clear paragraphs
+                    - Include specific examples and data
+                    - Use storytelling techniques
+                    - Add actionable insights
+                    - Make it comprehensive but accessible
+                    """
+                    
+                    response = model.generate_content(content_prompt)
                     st.session_state.generated_content = response.text
                     
                     # Search for relevant images
@@ -199,7 +242,8 @@ if input_method == "Enter text manually":
                 # Format and display content with interleaved images
                 formatted_content = format_content_with_images(
                     st.session_state.generated_content,
-                    st.session_state.images
+                    st.session_state.images,
+                    st.session_state.generated_title
                 )
                 st.markdown(formatted_content, unsafe_allow_html=True)
                 
@@ -222,8 +266,24 @@ else:  # File upload
                             model_name=st.session_state.model
                         )
                         
+                        # Generate engaging title first
+                        st.session_state.generated_title = generate_engaging_title(model, content[:200])
+                        
                         # Generate content
-                        response = model.generate_content(content)
+                        content_prompt = f"""
+                        Write a detailed article about this topic: {content}
+                        Use this title: {st.session_state.generated_title}
+                        
+                        Requirements:
+                        - Write in a professional, engaging style
+                        - Break content into clear paragraphs
+                        - Include specific examples and data
+                        - Use storytelling techniques
+                        - Add actionable insights
+                        - Make it comprehensive but accessible
+                        """
+                        
+                        response = model.generate_content(content_prompt)
                         st.session_state.generated_content = response.text
                         
                         # Search for relevant images
@@ -232,7 +292,8 @@ else:  # File upload
                     # Format and display content with interleaved images
                     formatted_content = format_content_with_images(
                         st.session_state.generated_content,
-                        st.session_state.images
+                        st.session_state.images,
+                        st.session_state.generated_title
                     )
                     st.markdown(formatted_content, unsafe_allow_html=True)
                     
