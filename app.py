@@ -7,330 +7,117 @@ import json
 import markdown
 import random
 import time
+from datetime import datetime
+import os
+from jinja2 import Template
+import re
 
 # Load environment variables
 load_dotenv()
 
 # App configuration
 st.set_page_config(
-    page_title="AI Content Generator",
+    page_title="AI Blog Generator",
     page_icon="✨",
     layout="wide"
 )
 
-# Custom styling
-st.markdown("""
-<style>
-    .main-title {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        color: #1E40AF;
-    }
-    .card {
-        background-color: #FFFFFF;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-    }
-    .success-text {
-        color: #047857;
-        font-weight: 600;
-    }
-    .error-text {
-        color: #DC2626;
-        font-weight: 600;
-    }
-    .content-image {
-        width: 100%;
-        max-height: 400px;
-        object-fit: cover;
-        border-radius: 8px;
-        margin: 20px 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .content-paragraph {
-        margin: 20px 0;
-        line-height: 1.8;
-        font-size: 1.1rem;
-    }
-    .content-title {
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 20px 0;
-        color: #1E40AF;
-    }
-    .image-gallery {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 20px;
-        padding: 20px 0;
-    }
-    .gallery-image {
-        width: 100%;
-        height: 200px;
-        object-fit: cover;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-        z-index: 1;
-    }
-    .gallery-image:hover {
-        transform: scale(2);
-        z-index: 999;
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-    }
-    .gallery-title {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin: 40px 0 20px 0;
-        color: #1E40AF;
-    }
-    .meta-description {
-        color: #4B5563;
-        font-size: 1rem;
-        margin: 10px 0 20px 0;
-        padding: 10px;
-        background: #F3F4F6;
-        border-radius: 4px;
-    }
-    .content-subheading {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: #1E40AF;
-        margin: 30px 0 20px 0;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #E5E7EB;
-    }
-    
-    .keyword-highlight {
-        color: #1E40AF;
-        font-weight: 600;
-        background: #F0F9FF;
-        padding: 0 4px;
-        border-radius: 4px;
-    }
-    
-    .keywords-section {
-        background: #F3F4F6;
-        padding: 15px;
-        border-radius: 8px;
-        margin: 20px 0;
-    }
-    
-    .keyword-title {
-        font-weight: 600;
-        color: #1E40AF;
-        margin-bottom: 10px;
-    }
-    
-    .keyword-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .keyword-tag {
-        background: #E0E7FF;
-        color: #1E40AF;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Load blog template
+with open('templates/blog_template.html', 'r') as f:
+    BLOG_TEMPLATE = Template(f.read())
 
-def generate_engaging_title(model, topic):
-    """Generate a professional and SEO-optimized title"""
-    current_time = int(time.time())
-    title_prompt = f"""
-    Create one SEO-optimized title about: {topic}
-    Current timestamp: {current_time}
+def clean_filename(title):
+    """Convert title to URL-friendly slug"""
+    title = title.lower()
+    title = re.sub(r'[^a-z0-9\s-]', '', title)
+    title = re.sub(r'[-\s]+', '-', title)
+    return title.strip('-')
 
-    Requirements:
-    - Include primary keyword naturally
-    - 50-60 characters (optimal for search engines)
-    - Use power words that drive clicks
-    - Include numbers or specific benefits when relevant
-    - Match search intent
-    - Avoid clickbait while maintaining interest
-    - Use proven title structures that rank well
+def generate_blog_html(title, content, meta_description, images, site_name="My Blog", site_description=""):
+    """Generate complete blog HTML using the template"""
+    featured_image = images[0]["url"] if images else ""
+    read_time = len(content.split()) // 200  # Assuming 200 words per minute reading speed
     
-    Return only the optimized title, no additional text.
-    """
+    # Format content with images
+    content_with_images = format_content_with_images(content, images, title, meta_description)
     
-    generation_config = genai.types.GenerationConfig(
-        candidate_count=1,
-        temperature=0.8,
-        top_p=0.95,
-        top_k=64,
-    )
-    
-    response = model.generate_content(title_prompt, generation_config=generation_config)
-    return response.text.strip().replace('"', '').replace('#', '').strip()
-
-def generate_meta_description(model, topic, title):
-    """Generate an SEO-optimized meta description"""
-    meta_prompt = f"""
-    Create a compelling meta description for an article about {topic} with title: {title}
-
-    Requirements:
-    - 150-160 characters long
-    - Include primary keyword naturally
-    - Clear value proposition
-    - Call-to-action
-    - Match search intent
-    - Avoid truncation in search results
-    
-    Return only the meta description, no additional text.
-    """
-    
-    generation_config = genai.types.GenerationConfig(
-        candidate_count=1,
-        temperature=0.7,
-        top_p=0.95,
-        top_k=64,
-    )
-    
-    response = model.generate_content(meta_prompt, generation_config=generation_config)
-    return response.text.strip()
-
-def generate_keywords(model, topic):
-    """Generate relevant keywords for the topic"""
-    keyword_prompt = f"""
-    Generate 10 relevant SEO keywords for: {topic}
-    
-    Include:
-    - Primary keyword
-    - Secondary keywords
-    - Long-tail variations
-    - Related terms
-    
-    Return as a comma-separated list only.
-    """
-    
-    generation_config = genai.types.GenerationConfig(
-        candidate_count=1,
-        temperature=0.7,
-        top_p=0.95,
-        top_k=64,
-    )
-    
-    response = model.generate_content(keyword_prompt, generation_config=generation_config)
-    return [kw.strip() for kw in response.text.split(',')]
-
-def search_bing_images(query, num_images=15):
-    try:
-        variations = [
-            f"{query} {random.choice(['guide', 'tutorial', 'expert advice'])}",
-            f"{query} {random.choice(['best practices', 'professional tips', 'industry insights'])}",
-            f"{query} {random.choice(['2024 trends', 'latest developments', 'current examples'])}"
-        ]
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    # Generate related articles (placeholder)
+    related_articles = [
+        {
+            "title": "Related Article 1",
+            "url": "#",
+            "image": images[1]["url"] if len(images) > 1 else "",
+            "excerpt": "Sample excerpt for related article 1"
+        },
+        {
+            "title": "Related Article 2",
+            "url": "#",
+            "image": images[2]["url"] if len(images) > 2 else "",
+            "excerpt": "Sample excerpt for related article 2"
         }
-        
-        all_images = []
-        for variation in variations:
-            search_url = f'https://www.bing.com/images/search?q={variation}&form=HDRSC2'
-            response = requests.get(search_url, headers=headers)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            for img in soup.find_all('a', class_='iusc'):
-                try:
-                    m = json.loads(img['m'])
-                    image_url = m['murl']
-                    all_images.append({
-                        'url': image_url,
-                        'title': m.get('t', 'Image')
-                    })
-                except:
-                    continue
-        
-        random.shuffle(all_images)
-        seen_urls = set()
-        unique_images = []
-        for img in all_images:
-            if img['url'] not in seen_urls and len(unique_images) < num_images:
-                seen_urls.add(img['url'])
-                unique_images.append(img)
-        
-        return unique_images
-    except Exception as e:
-        st.error(f"Error searching images: {str(e)}")
-        return []
+    ]
+    
+    # Render template
+    html = BLOG_TEMPLATE.render(
+        title=title,
+        content=content_with_images,
+        meta_description=meta_description,
+        featured_image=featured_image,
+        date=datetime.now().strftime("%B %d, %Y"),
+        read_time=read_time,
+        site_name=site_name,
+        site_description=site_description,
+        year=datetime.now().year,
+        related_articles=related_articles
+    )
+    
+    return html
 
-def format_content_with_images(content, images, title, meta_description, keywords):
-    paragraphs = [p for p in content.split('\n\n') if p.strip()]
-    formatted_content = f'<div class="content-title">{title}</div>'
-    formatted_content += f'<div class="meta-description">{meta_description}</div>'
+def process_bulk_topics(topics):
+    """Process multiple topics and generate articles"""
+    generated_articles = []
     
-    # Add keywords section
-    formatted_content += '<div class="keywords-section">'
-    formatted_content += '<p class="keyword-title">Focus Keywords:</p>'
-    formatted_content += '<div class="keyword-list">'
-    for keyword in keywords:
-        formatted_content += f'<span class="keyword-tag">{keyword}</span>'
-    formatted_content += '</div></div>'
-    
-    if images:
-        formatted_content += f'<img src="{images[0]["url"]}" alt="{title}" class="content-image">'
-    
-    # Process paragraphs with subheadings and keyword highlighting
-    for i, paragraph in enumerate(paragraphs):
-        clean_paragraph = paragraph.replace('#', '').strip()
-        clean_paragraph = clean_paragraph.replace('***', '').replace('**', '').replace('*', '')
-        
-        # Add subheadings every 3-4 paragraphs
-        if i > 0 and i % 3 == 0:
-            formatted_content += f'<h3 class="content-subheading">{clean_paragraph}</h3>'
+    for topic in topics:
+        topic = topic.strip()
+        if not topic:
             continue
-        
-        # Highlight keywords in the paragraph
-        highlighted_paragraph = clean_paragraph
-        for keyword in keywords:
-            if keyword.lower() in highlighted_paragraph.lower():
-                highlighted_paragraph = highlighted_paragraph.replace(
-                    keyword,
-                    f'<strong class="keyword-highlight">{keyword}</strong>',
-                    1  # Replace only first occurrence to avoid over-optimization
-                )
-        
-        formatted_content += f'<div class="content-paragraph">{highlighted_paragraph}</div>'
-        
-        # Add images between paragraphs
-        image_index = i + 1
-        if image_index < len(images) - 5:
-            formatted_content += f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">'
+            
+        try:
+            # Generate content
+            model = genai.GenerativeModel(model_name=st.session_state.model)
+            title = generate_engaging_title(model, topic)
+            meta_description = generate_meta_description(model, topic, title)
+            content = st.session_state.generated_content = model.generate_content(
+                f"Write a comprehensive article about: {topic}"
+            ).text
+            
+            # Search for images
+            images = search_bing_images(topic)
+            
+            # Generate HTML
+            html = generate_blog_html(
+                title=title,
+                content=content,
+                meta_description=meta_description,
+                images=images
+            )
+            
+            # Create filename
+            filename = f"{clean_filename(title)}.html"
+            
+            generated_articles.append({
+                "title": title,
+                "filename": filename,
+                "html": html
+            })
+            
+        except Exception as e:
+            st.error(f"Error processing topic '{topic}': {str(e)}")
     
-    formatted_content += '<div class="gallery-title">Related Images</div>'
-    formatted_content += '<div class="image-gallery">'
-    for img in images[-6:]:
-        formatted_content += f'<img src="{img["url"]}" alt="{img["title"]}" class="gallery-image" onclick="window.open(this.src)">'
-    formatted_content += '</div>'
-    
-    return formatted_content
+    return generated_articles
 
-# Initialize session state
-if 'api_key' not in st.session_state:
-    st.session_state.api_key = ''
-if 'model' not in st.session_state:
-    st.session_state.model = 'gemini-1.5-pro'
-if 'generated_content' not in st.session_state:
-    st.session_state.generated_content = None
-if 'images' not in st.session_state:
-    st.session_state.images = []
-if 'generated_title' not in st.session_state:
-    st.session_state.generated_title = None
-if 'meta_description' not in st.session_state:
-    st.session_state.meta_description = None
-
-# App title
-st.markdown('<div class="main-title">SEO-Optimized Content Generator</div>', unsafe_allow_html=True)
+# Main UI
+st.markdown('<div class="main-title">SEO-Optimized Blog Generator</div>', unsafe_allow_html=True)
 
 # Sidebar configuration
 with st.sidebar:
@@ -339,120 +126,63 @@ with st.sidebar:
     api_key = st.text_input(
         "Enter your Gemini API key:",
         type="password",
-        value=st.session_state.api_key
+        value=st.session_state.get('api_key', '')
     )
     
-    model = st.selectbox(
-        "Select Model:",
-        ["gemini-1.5-pro", "gemini-1.5-flash"],
-        index=0
+    site_name = st.text_input(
+        "Site Name:",
+        value=st.session_state.get('site_name', 'My Blog')
+    )
+    
+    site_description = st.text_area(
+        "Site Description:",
+        value=st.session_state.get('site_description', '')
     )
     
     if st.button("Save Configuration"):
         if api_key:
             st.session_state.api_key = api_key
-            st.session_state.model = model
+            st.session_state.site_name = site_name
+            st.session_state.site_description = site_description
             genai.configure(api_key=api_key)
             st.success("Configuration saved successfully!")
         else:
             st.error("Please enter an API key.")
 
 # Main content area
-st.markdown("### Generate SEO-Optimized Content")
+st.markdown("### Generate Blog Articles")
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
-input_method = st.radio(
-    "Choose input method:",
-    ["Enter text manually", "Upload a file"],
-    horizontal=True
+topics_text = st.text_area(
+    "Enter topics (one per line):",
+    height=150,
+    placeholder="Enter your topics here, one per line..."
 )
 
-def generate_content(input_text):
-    if not st.session_state.api_key:
+if st.button("Generate Articles"):
+    if not st.session_state.get('api_key'):
         st.error("Please configure your API key in the sidebar first.")
-        return
-    elif not input_text:
-        st.error("Please enter some text to process.")
-        return
-    
-    try:
-        with st.spinner("Generating SEO-optimized content..."):
-            model = genai.GenerativeModel(model_name=st.session_state.model)
+    elif not topics_text:
+        st.error("Please enter at least one topic.")
+    else:
+        topics = topics_text.split('\n')
+        with st.spinner("Generating articles..."):
+            articles = process_bulk_topics(topics)
             
-            # Generate title, meta description, and keywords
-            st.session_state.generated_title = generate_engaging_title(model, input_text)
-            st.session_state.meta_description = generate_meta_description(model, input_text, st.session_state.generated_title)
-            keywords = generate_keywords(model, input_text)
+            # Create output directory
+            output_dir = "generated_articles"
+            os.makedirs(output_dir, exist_ok=True)
             
-            current_time = int(time.time())
-            content_prompt = f"""
-            Write a comprehensive, SEO-optimized article about: {input_text}
-            Title: {st.session_state.generated_title}
-            Keywords: {', '.join(keywords)}
-            Current timestamp: {current_time}
+            # Save articles
+            for article in articles:
+                filepath = os.path.join(output_dir, article["filename"])
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(article["html"])
             
-            SEO Requirements:
-            - Natural keyword placement (2-3% density)
-            - Long-form content (3000 words)
-            - LSI keywords and related terms
-            - Semantic relevance
-            - Internal linking opportunities
-            - Featured snippet potential
-            - E-A-T signals
+            st.success(f"Generated {len(articles)} articles in the '{output_dir}' directory!")
             
-            Content Guidelines:
-            - Start with a compelling hook
-            - Use natural paragraph transitions
-            - Include expert insights and statistics
-            - Add real-world examples
-            - Provide actionable advice
-            - Use engaging subheadings naturally
-            - Optimize for featured snippets
-            - Include FAQ-style content
-            - End with a strong conclusion
-            
-            Write in a natural, flowing style without explicit formatting or markers.
-            Focus on both reader engagement and search engine optimization.
-            """
-            
-            generation_config = genai.types.GenerationConfig(
-                candidate_count=1,
-                temperature=0.8,
-                top_p=0.95,
-                top_k=64,
-            )
-            
-            response = model.generate_content(content_prompt, generation_config=generation_config)
-            st.session_state.generated_content = response.text
-            st.session_state.images = search_bing_images(input_text, num_images=15)
-        
-        formatted_content = format_content_with_images(
-            st.session_state.generated_content,
-            st.session_state.images,
-            st.session_state.generated_title,
-            st.session_state.meta_description,
-            keywords
-        )
-        st.markdown(formatted_content, unsafe_allow_html=True)
-        
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
-
-if input_method == "Enter text manually":
-    user_input = st.text_area(
-        "Enter your topic or keywords:",
-        height=150,
-        placeholder="Enter the main topic or keywords for your SEO-optimized content..."
-    )
-    
-    if st.button("Generate SEO Content"):
-        generate_content(user_input)
-else:
-    uploaded_file = st.file_uploader("Upload a text file:", type=["txt"])
-    
-    if uploaded_file is not None:
-        content = uploaded_file.read().decode("utf-8")
-        if st.button("Process File"):
-            generate_content(content)
+            # Create download links
+            for article in articles:
+                st.markdown(f"📄 [{article['title']}](generated_articles/{article['filename']})")
 
 st.markdown('</div>', unsafe_allow_html=True)
