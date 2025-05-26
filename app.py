@@ -5,6 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import markdown
+import random
+import time
 
 # Load environment variables
 load_dotenv()
@@ -59,13 +61,38 @@ st.markdown("""
         margin: 20px 0;
         color: #1E40AF;
     }
+    .image-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 20px 0;
+    }
+    .gallery-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+        transition: transform 0.3s ease;
+        cursor: pointer;
+    }
+    .gallery-image:hover {
+        transform: scale(1.05);
+    }
+    .gallery-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 40px 0 20px 0;
+        color: #1E40AF;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 def generate_engaging_title(model, topic):
-    """Generate a professional and engaging title"""
+    """Generate a professional and engaging title with randomization"""
+    current_time = int(time.time())  # Add timestamp for variation
     title_prompt = f"""
     As a professional headline writer, create ONE compelling title for an article about: {topic}
+    Current timestamp: {current_time}  # This ensures different results each time
 
     The title should:
     - Use power words that evoke emotion or curiosity
@@ -88,33 +115,49 @@ def generate_engaging_title(model, topic):
     Return ONLY the title, no explanations or additional text.
     """
     
-    response = model.generate_content(title_prompt)
+    response = model.generate_content(title_prompt, temperature=random.uniform(0.7, 0.9))
     return response.text.strip().replace('"', '').replace('#', '').strip()
 
-def search_bing_images(query, num_images=5):
+def search_bing_images(query, num_images=15):
     try:
+        # Add randomization to search query
+        variations = [
+            f"{query} {random.choice(['guide', 'tutorial', 'tips', 'examples', 'ideas'])}",
+            f"{query} {random.choice(['professional', 'modern', 'creative', 'innovative'])}",
+            f"{query} {random.choice(['2024', 'latest', 'trending', 'best'])}"
+        ]
+        
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        search_url = f'https://www.bing.com/images/search?q={query}&form=HDRSC2'
-        response = requests.get(search_url, headers=headers)
-        soup = BeautifulSoup(response.text, 'html.parser')
         
-        images = []
-        for img in soup.find_all('a', class_='iusc'):
-            try:
-                m = json.loads(img['m'])
-                image_url = m['murl']
-                images.append({
-                    'url': image_url,
-                    'title': m.get('t', 'Image')
-                })
-                if len(images) >= num_images:
-                    break
-            except:
-                continue
+        all_images = []
+        for variation in variations:
+            search_url = f'https://www.bing.com/images/search?q={variation}&form=HDRSC2'
+            response = requests.get(search_url, headers=headers)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            for img in soup.find_all('a', class_='iusc'):
+                try:
+                    m = json.loads(img['m'])
+                    image_url = m['murl']
+                    all_images.append({
+                        'url': image_url,
+                        'title': m.get('t', 'Image')
+                    })
+                except:
+                    continue
         
-        return images
+        # Shuffle and return unique images
+        random.shuffle(all_images)
+        seen_urls = set()
+        unique_images = []
+        for img in all_images:
+            if img['url'] not in seen_urls and len(unique_images) < num_images:
+                seen_urls.add(img['url'])
+                unique_images.append(img)
+        
+        return unique_images
     except Exception as e:
         st.error(f"Error searching images: {str(e)}")
         return []
@@ -137,8 +180,15 @@ def format_content_with_images(content, images, title):
         
         # Add image if available (skip first image as it's already used)
         image_index = i + 1
-        if image_index < len(images):
+        if image_index < len(images) - 5:  # Reserve last 5 images for gallery
             formatted_content += f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">'
+    
+    # Add image gallery
+    formatted_content += '<div class="gallery-title">Image Gallery</div>'
+    formatted_content += '<div class="image-gallery">'
+    for img in images[-5:]:  # Use last 5 images for gallery
+        formatted_content += f'<img src="{img["url"]}" alt="{img["title"]}" class="gallery-image" onclick="window.open(this.src)">'
+    formatted_content += '</div>'
     
     return formatted_content
 
@@ -211,7 +261,7 @@ if input_method == "Enter text manually":
         else:
             try:
                 with st.spinner("Generating content..."):
-                    # Initialize the model
+                    # Initialize the model with randomization
                     model = genai.GenerativeModel(
                         model_name=st.session_state.model
                     )
@@ -219,10 +269,12 @@ if input_method == "Enter text manually":
                     # Generate engaging title first
                     st.session_state.generated_title = generate_engaging_title(model, user_input)
                     
-                    # Generate content
+                    # Generate content with randomization
+                    current_time = int(time.time())
                     content_prompt = f"""
                     Write a detailed article about: {user_input}
                     Use this title: {st.session_state.generated_title}
+                    Current timestamp: {current_time}  # This ensures different results each time
                     
                     Requirements:
                     - Write in a professional, engaging style
@@ -231,15 +283,16 @@ if input_method == "Enter text manually":
                     - Use storytelling techniques
                     - Add actionable insights
                     - Make it comprehensive but accessible
+                    - Ensure content is unique and different from previous generations
                     """
                     
-                    response = model.generate_content(content_prompt)
+                    response = model.generate_content(content_prompt, temperature=random.uniform(0.7, 0.9))
                     st.session_state.generated_content = response.text
                     
-                    # Search for relevant images
-                    st.session_state.images = search_bing_images(user_input)
+                    # Search for relevant images with increased count
+                    st.session_state.images = search_bing_images(user_input, num_images=15)
                 
-                # Format and display content with interleaved images
+                # Format and display content with interleaved images and gallery
                 formatted_content = format_content_with_images(
                     st.session_state.generated_content,
                     st.session_state.images,
@@ -261,7 +314,7 @@ else:  # File upload
             else:
                 try:
                     with st.spinner("Processing file..."):
-                        # Initialize the model
+                        # Initialize the model with randomization
                         model = genai.GenerativeModel(
                             model_name=st.session_state.model
                         )
@@ -269,10 +322,12 @@ else:  # File upload
                         # Generate engaging title first
                         st.session_state.generated_title = generate_engaging_title(model, content[:200])
                         
-                        # Generate content
+                        # Generate content with randomization
+                        current_time = int(time.time())
                         content_prompt = f"""
                         Write a detailed article about this topic: {content}
                         Use this title: {st.session_state.generated_title}
+                        Current timestamp: {current_time}  # This ensures different results each time
                         
                         Requirements:
                         - Write in a professional, engaging style
@@ -281,15 +336,16 @@ else:  # File upload
                         - Use storytelling techniques
                         - Add actionable insights
                         - Make it comprehensive but accessible
+                        - Ensure content is unique and different from previous generations
                         """
                         
-                        response = model.generate_content(content_prompt)
+                        response = model.generate_content(content_prompt, temperature=random.uniform(0.7, 0.9))
                         st.session_state.generated_content = response.text
                         
-                        # Search for relevant images
-                        st.session_state.images = search_bing_images(content[:100])
+                        # Search for relevant images with increased count
+                        st.session_state.images = search_bing_images(content[:100], num_images=15)
                     
-                    # Format and display content with interleaved images
+                    # Format and display content with interleaved images and gallery
                     formatted_content = format_content_with_images(
                         st.session_state.generated_content,
                         st.session_state.images,
