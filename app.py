@@ -11,6 +11,8 @@ from datetime import datetime
 import os
 from jinja2 import Template
 import re
+import shutil
+import zipfile
 
 # Load environment variables
 load_dotenv()
@@ -204,6 +206,111 @@ def generate_blog_html(title, content, meta_description, images, site_name="My B
     
     return html
 
+def create_github_export(articles, site_name, site_description):
+    """Create a GitHub-ready export of the blog"""
+    # Create temporary directory for export
+    export_dir = "github_export"
+    if os.path.exists(export_dir):
+        shutil.rmtree(export_dir)
+    os.makedirs(export_dir)
+    
+    # Copy template assets
+    os.makedirs(os.path.join(export_dir, 'templates'))
+    shutil.copy('templates/blog_template.html', os.path.join(export_dir, 'templates'))
+    
+    # Create articles directory
+    articles_dir = os.path.join(export_dir, 'articles')
+    os.makedirs(articles_dir)
+    
+    # Save articles
+    for article in articles:
+        filepath = os.path.join(articles_dir, article["filename"])
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(article["html"])
+    
+    # Create index.html
+    index_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>{site_name}</title>
+        <meta name="description" content="{site_description}">
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <header class="bg-white shadow-lg py-6">
+            <div class="max-w-7xl mx-auto px-4">
+                <h1 class="text-3xl font-bold text-gray-900">{site_name}</h1>
+                <p class="mt-2 text-gray-600">{site_description}</p>
+            </div>
+        </header>
+        
+        <main class="max-w-7xl mx-auto px-4 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    """
+    
+    # Add article cards to index
+    for article in articles:
+        index_content += f"""
+                <a href="articles/{article['filename']}" class="block">
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
+                        <div class="p-6">
+                            <h2 class="text-xl font-semibold mb-2">{article['title']}</h2>
+                            <p class="text-gray-600">Click to read more...</p>
+                        </div>
+                    </div>
+                </a>
+        """
+    
+    index_content += """
+            </div>
+        </main>
+        
+        <footer class="bg-gray-800 text-white py-8 mt-12">
+            <div class="max-w-7xl mx-auto px-4 text-center">
+                <p>&copy; 2024 All rights reserved.</p>
+            </div>
+        </footer>
+    </body>
+    </html>
+    """
+    
+    with open(os.path.join(export_dir, 'index.html'), 'w', encoding='utf-8') as f:
+        f.write(index_content)
+    
+    # Create README.md
+    readme_content = f"""# {site_name}
+
+A collection of SEO-optimized blog articles generated with AI.
+
+## Articles
+
+{chr(10).join(f'- [{article["title"]}](articles/{article["filename"]})' for article in articles)}
+
+## About
+
+{site_description}
+
+## Setup
+
+1. Clone this repository
+2. Open index.html in your browser
+3. Deploy to GitHub Pages for online access
+
+## License
+
+MIT
+"""
+    
+    with open(os.path.join(export_dir, 'README.md'), 'w', encoding='utf-8') as f:
+        f.write(readme_content)
+    
+    # Create zip file
+    shutil.make_archive(export_dir, 'zip', export_dir)
+    
+    return f"{export_dir}.zip"
+
 def process_bulk_topics(topics):
     """Process multiple topics and generate articles"""
     generated_articles = []
@@ -305,24 +412,35 @@ if st.button("Generate Articles"):
     else:
         topics = topics_text.split('\n')
         
-        # Create output directory
-        output_dir = "generated_articles"
-        os.makedirs(output_dir, exist_ok=True)
-        
         # Process topics and generate articles
         articles = process_bulk_topics(topics)
         
-        # Save articles
-        for article in articles:
-            filepath = os.path.join(output_dir, article["filename"])
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(article["html"])
-        
         if articles:
-            st.success(f"Generated {len(articles)} articles in the '{output_dir}' directory!")
+            # Create GitHub-ready export
+            export_file = create_github_export(
+                articles,
+                st.session_state.get('site_name', 'My Blog'),
+                st.session_state.get('site_description', '')
+            )
             
-            # Create download links
-            for article in articles:
-                st.markdown(f"📄 [{article['title']}](generated_articles/{article['filename']})")
+            # Provide download link
+            with open(export_file, 'rb') as f:
+                st.download_button(
+                    label="📦 Download GitHub-ready package",
+                    data=f,
+                    file_name="blog_export.zip",
+                    mime="application/zip"
+                )
+            
+            st.success(f"""
+            ✅ Generated {len(articles)} articles successfully!
+            
+            To deploy to GitHub:
+            1. Download the zip file
+            2. Extract the contents
+            3. Create a new GitHub repository
+            4. Upload the extracted files
+            5. Enable GitHub Pages in repository settings
+            """)
 
 st.markdown('</div>', unsafe_allow_html=True)
