@@ -287,7 +287,7 @@ def format_content_with_images(content, images, title, meta_description, keyword
         
         # Add subheadings every 3-4 paragraphs
         if i > 0 and i % 3 == 0:
-            formatted_content += f'<h2 class="content-subheading">{clean_paragraph}</h2>'
+            formatted_content += f'<h3 class="content-subheading">{clean_paragraph}</h3>'
             continue
         
         # Highlight keywords in the paragraph
