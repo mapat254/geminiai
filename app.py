@@ -96,6 +96,50 @@ st.markdown("""
         background: #F3F4F6;
         border-radius: 4px;
     }
+    .content-subheading {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1E40AF;
+        margin: 30px 0 20px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #E5E7EB;
+    }
+    
+    .keyword-highlight {
+        color: #1E40AF;
+        font-weight: 600;
+        background: #F0F9FF;
+        padding: 0 4px;
+        border-radius: 4px;
+    }
+    
+    .keywords-section {
+        background: #F3F4F6;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    
+    .keyword-title {
+        font-weight: 600;
+        color: #1E40AF;
+        margin-bottom: 10px;
+    }
+    
+    .keyword-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .keyword-tag {
+        background: #E0E7FF;
+        color: #1E40AF;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -154,6 +198,30 @@ def generate_meta_description(model, topic, title):
     response = model.generate_content(meta_prompt, generation_config=generation_config)
     return response.text.strip()
 
+def generate_keywords(model, topic):
+    """Generate relevant keywords for the topic"""
+    keyword_prompt = f"""
+    Generate 10 relevant SEO keywords for: {topic}
+    
+    Include:
+    - Primary keyword
+    - Secondary keywords
+    - Long-tail variations
+    - Related terms
+    
+    Return as a comma-separated list only.
+    """
+    
+    generation_config = genai.types.GenerationConfig(
+        candidate_count=1,
+        temperature=0.7,
+        top_p=0.95,
+        top_k=64,
+    )
+    
+    response = model.generate_content(keyword_prompt, generation_config=generation_config)
+    return [kw.strip() for kw in response.text.split(',')]
+
 def search_bing_images(query, num_images=15):
     try:
         variations = [
@@ -196,19 +264,45 @@ def search_bing_images(query, num_images=15):
         st.error(f"Error searching images: {str(e)}")
         return []
 
-def format_content_with_images(content, images, title, meta_description):
+def format_content_with_images(content, images, title, meta_description, keywords):
     paragraphs = [p for p in content.split('\n\n') if p.strip()]
     formatted_content = f'<div class="content-title">{title}</div>'
     formatted_content += f'<div class="meta-description">{meta_description}</div>'
     
+    # Add keywords section
+    formatted_content += '<div class="keywords-section">'
+    formatted_content += '<p class="keyword-title">Focus Keywords:</p>'
+    formatted_content += '<div class="keyword-list">'
+    for keyword in keywords:
+        formatted_content += f'<span class="keyword-tag">{keyword}</span>'
+    formatted_content += '</div></div>'
+    
     if images:
         formatted_content += f'<img src="{images[0]["url"]}" alt="{title}" class="content-image">'
     
+    # Process paragraphs with subheadings and keyword highlighting
     for i, paragraph in enumerate(paragraphs):
         clean_paragraph = paragraph.replace('#', '').strip()
         clean_paragraph = clean_paragraph.replace('***', '').replace('**', '').replace('*', '')
-        formatted_content += f'<div class="content-paragraph">{clean_paragraph}</div>'
         
+        # Add subheadings every 3-4 paragraphs
+        if i > 0 and i % 3 == 0:
+            formatted_content += f'<h2 class="content-subheading">{clean_paragraph}</h2>'
+            continue
+        
+        # Highlight keywords in the paragraph
+        highlighted_paragraph = clean_paragraph
+        for keyword in keywords:
+            if keyword.lower() in highlighted_paragraph.lower():
+                highlighted_paragraph = highlighted_paragraph.replace(
+                    keyword,
+                    f'<strong class="keyword-highlight">{keyword}</strong>',
+                    1  # Replace only first occurrence to avoid over-optimization
+                )
+        
+        formatted_content += f'<div class="content-paragraph">{highlighted_paragraph}</div>'
+        
+        # Add images between paragraphs
         image_index = i + 1
         if image_index < len(images) - 5:
             formatted_content += f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">'
@@ -284,13 +378,17 @@ def generate_content(input_text):
     try:
         with st.spinner("Generating SEO-optimized content..."):
             model = genai.GenerativeModel(model_name=st.session_state.model)
+            
+            # Generate title, meta description, and keywords
             st.session_state.generated_title = generate_engaging_title(model, input_text)
             st.session_state.meta_description = generate_meta_description(model, input_text, st.session_state.generated_title)
+            keywords = generate_keywords(model, input_text)
             
             current_time = int(time.time())
             content_prompt = f"""
             Write a comprehensive, SEO-optimized article about: {input_text}
             Title: {st.session_state.generated_title}
+            Keywords: {', '.join(keywords)}
             Current timestamp: {current_time}
             
             SEO Requirements:
@@ -332,7 +430,8 @@ def generate_content(input_text):
             st.session_state.generated_content,
             st.session_state.images,
             st.session_state.generated_title,
-            st.session_state.meta_description
+            st.session_state.meta_description,
+            keywords
         )
         st.markdown(formatted_content, unsafe_allow_html=True)
         
