@@ -115,7 +115,14 @@ def generate_engaging_title(model, topic):
     Return ONLY the title, no explanations or additional text.
     """
     
-    response = model.generate_content(title_prompt, temperature=random.uniform(0.7, 0.9))
+    generation_config = genai.types.GenerationConfig(
+        candidate_count=1,
+        temperature=0.8,
+        top_p=0.95,
+        top_k=64,
+    )
+    
+    response = model.generate_content(title_prompt, generation_config=generation_config)
     return response.text.strip().replace('"', '').replace('#', '').strip()
 
 def search_bing_images(query, num_images=15):
@@ -261,7 +268,7 @@ if input_method == "Enter text manually":
         else:
             try:
                 with st.spinner("Generating content..."):
-                    # Initialize the model with randomization
+                    # Initialize the model
                     model = genai.GenerativeModel(
                         model_name=st.session_state.model
                     )
@@ -269,7 +276,7 @@ if input_method == "Enter text manually":
                     # Generate engaging title first
                     st.session_state.generated_title = generate_engaging_title(model, user_input)
                     
-                    # Generate content with randomization
+                    # Generate content with proper configuration
                     current_time = int(time.time())
                     content_prompt = f"""
                     Write a detailed article about: {user_input}
@@ -286,7 +293,14 @@ if input_method == "Enter text manually":
                     - Ensure content is unique and different from previous generations
                     """
                     
-                    response = model.generate_content(content_prompt, temperature=random.uniform(0.7, 0.9))
+                    generation_config = genai.types.GenerationConfig(
+                        candidate_count=1,
+                        temperature=0.8,
+                        top_p=0.95,
+                        top_k=64,
+                    )
+                    
+                    response = model.generate_content(content_prompt, generation_config=generation_config)
                     st.session_state.generated_content = response.text
                     
                     # Search for relevant images with increased count
@@ -314,7 +328,7 @@ else:  # File upload
             else:
                 try:
                     with st.spinner("Processing file..."):
-                        # Initialize the model with randomization
+                        # Initialize the model
                         model = genai.GenerativeModel(
                             model_name=st.session_state.model
                         )
@@ -322,7 +336,7 @@ else:  # File upload
                         # Generate engaging title first
                         st.session_state.generated_title = generate_engaging_title(model, content[:200])
                         
-                        # Generate content with randomization
+                        # Generate content with proper configuration
                         current_time = int(time.time())
                         content_prompt = f"""
                         Write a detailed article about this topic: {content}
@@ -339,7 +353,14 @@ else:  # File upload
                         - Ensure content is unique and different from previous generations
                         """
                         
-                        response = model.generate_content(content_prompt, temperature=random.uniform(0.7, 0.9))
+                        generation_config = genai.types.GenerationConfig(
+                            candidate_count=1,
+                            temperature=0.8,
+                            top_p=0.95,
+                            top_k=64,
+                        )
+                        
+                        response = model.generate_content(content_prompt, generation_config=generation_config)
                         st.session_state.generated_content = response.text
                         
                         # Search for relevant images with increased count
