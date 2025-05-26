@@ -91,40 +91,32 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-TITLE_FORMATS = [
-    "The {number} Minute {topic} Hack That {unexpected_benefit}",
-    "Why {common_belief} Is Actually {surprising_truth}: {specific_data_point}",
-    "How {unusual_method} Can {desired_outcome} ({specific_metric})",
-    "The Forgotten {ancient_historical_reference} Secret to {modern_topic}",
-    "What {unexpected_profession} Can Teach Us About {topic}"
-]
-
 def generate_engaging_title(model, topic):
-    """Generate a professional and engaging title with high CPM and low competition focus"""
+    """Generate a professional and SEO-friendly title"""
     current_time = int(time.time())
     title_prompt = f"""
-    As an expert headline writer specializing in viral content and unique angles, create ONE compelling title about: {topic}
+    As a professional SEO content strategist and headline expert, create ONE compelling, 
+    click-worthy, and search-optimized title about: {topic}
     Current timestamp: {current_time}
 
-    Requirements for the perfect title:
-    - Must be completely unique and never-before-seen
-    - Use unexpected word combinations or metaphors
-    - Include specific, unusual numbers (avoid round numbers)
-    - Target length: 45-60 characters
-    - Must create intense curiosity
+    Requirements:
+    - Length: 50-60 characters
+    - Include primary keyword naturally
+    - Use power words that drive engagement
+    - Create curiosity without clickbait
+    - Ensure uniqueness and originality
+    - Focus on value proposition
+    - Include numbers or specific benefits when relevant
     
-    Use one of these unique title formats:
-    {chr(10).join(f'- "{format}"' for format in TITLE_FORMATS)}
-    
-    Advanced techniques to use:
-    - Combine concepts from different fields
-    - Use contrast between old and new
-    - Include specific, unusual metrics
-    - Reference unexpected experts or sources
-    - Create intrigue through partial revelation
+    Advanced SEO techniques:
+    - Front-load important keywords
+    - Use proven headline structures
+    - Include emotional triggers
+    - Maintain professional tone
+    - Ensure search intent alignment
     
     Return ONLY the title, no explanations or additional text.
-    Make it impossible to resist clicking.
+    Make it compelling for both search engines and readers.
     """
     
     generation_config = genai.types.GenerationConfig(
@@ -140,9 +132,9 @@ def generate_engaging_title(model, topic):
 def search_bing_images(query, num_images=15):
     try:
         variations = [
-            f"{query} {random.choice(['guide', 'tutorial', 'tips', 'examples', 'ideas'])}",
-            f"{query} {random.choice(['professional', 'modern', 'creative', 'innovative'])}",
-            f"{query} {random.choice(['2024', 'latest', 'trending', 'best'])}"
+            f"{query} {random.choice(['professional', 'expert', 'guide', 'tutorial'])}",
+            f"{query} {random.choice(['best practices', 'industry leading', 'top rated'])}",
+            f"{query} {random.choice(['2024 trends', 'latest developments', 'current'])}"
         ]
         
         headers = {
@@ -193,7 +185,7 @@ def format_content_with_images(content, images, title):
         if image_index < len(images) - 5:
             formatted_content += f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">'
     
-    formatted_content += '<div class="gallery-title">Image Gallery</div>'
+    formatted_content += '<div class="gallery-title">Related Images</div>'
     formatted_content += '<div class="image-gallery">'
     for img in images[-6:]:
         formatted_content += f'<img src="{img["url"]}" alt="{img["title"]}" class="gallery-image" onclick="window.open(this.src)">'
@@ -205,7 +197,7 @@ def format_content_with_images(content, images, title):
 if 'api_key' not in st.session_state:
     st.session_state.api_key = ''
 if 'model' not in st.session_state:
-    st.session_state.model = 'gemini-1.5-flash'
+    st.session_state.model = 'gemini-1.5-pro'
 if 'generated_content' not in st.session_state:
     st.session_state.generated_content = None
 if 'images' not in st.session_state:
@@ -214,7 +206,7 @@ if 'generated_title' not in st.session_state:
     st.session_state.generated_title = None
 
 # App title
-st.markdown('<div class="main-title">AI Content Generator</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Professional Content Generator</div>', unsafe_allow_html=True)
 
 # Sidebar configuration
 with st.sidebar:
@@ -228,7 +220,7 @@ with st.sidebar:
     
     model = st.selectbox(
         "Select Model:",
-        ["gemini-1.5-flash", "gemini-1.5-pro"],
+        ["gemini-1.5-pro", "gemini-1.5-flash"],
         index=0
     )
     
@@ -242,7 +234,7 @@ with st.sidebar:
             st.error("Please enter an API key.")
 
 # Main content area
-st.markdown("### Generate Content")
+st.markdown("### Generate Professional Content")
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
 input_method = st.radio(
@@ -260,38 +252,44 @@ def generate_content(input_text):
         return
     
     try:
-        with st.spinner("Generating content..."):
+        with st.spinner("Generating professional content..."):
             model = genai.GenerativeModel(model_name=st.session_state.model)
             st.session_state.generated_title = generate_engaging_title(model, input_text)
             
             current_time = int(time.time())
             content_prompt = f"""
-            Write a comprehensive, engaging, and detailed 3000-word article about: {input_text}
-            Use this title: {st.session_state.generated_title}
+            As a professional content strategist and SEO expert, create a comprehensive, 
+            engaging, and highly valuable article about: {input_text}
+            Title: {st.session_state.generated_title}
             Current timestamp: {current_time}
             
-            Article Requirements:
-            - Exactly 3000 words
-            - Divide into clear sections with subheadings
-            - Include expert insights and analysis
-            - Use storytelling techniques
-            - Add real-world examples
-            - Include data and statistics
-            - Make it highly engaging and informative
-            - Use a conversational yet professional tone
-            - Break down complex concepts
-            - End with actionable takeaways
+            Content Requirements:
+            - Length: 3000 words exactly
+            - Optimize for both readers and search engines
+            - Include relevant keywords naturally
+            - Use data-driven insights and statistics
+            - Incorporate expert opinions and research
+            - Follow E-E-A-T principles
+            - Ensure original, unique perspectives
+            - Include practical, actionable advice
             
             Structure:
-            1. Compelling introduction (300 words)
-            2. Background/Context (400 words)
-            3. Main analysis (1500 words)
-            4. Expert insights (400 words)
-            5. Practical applications (300 words)
-            6. Conclusion with actionable steps (100 words)
+            1. Engaging introduction with value proposition (300 words)
+            2. Comprehensive background with latest trends (400 words)
+            3. In-depth analysis with expert insights (1500 words)
+            4. Practical implementation guide (400 words)
+            5. Case studies and real-world examples (300 words)
+            6. Actionable conclusion with next steps (100 words)
             
-            Make every section unique and valuable.
-            Focus on depth and quality.
+            SEO Optimization:
+            - Use proper heading hierarchy (H2, H3, H4)
+            - Include relevant LSI keywords
+            - Optimize for featured snippets
+            - Create scannable content with bullet points
+            - Include expert quotes and citations
+            - Focus on user intent satisfaction
+            
+            Make every section unique, valuable, and optimized for both search engines and readers.
             """
             
             generation_config = genai.types.GenerationConfig(
@@ -317,12 +315,12 @@ def generate_content(input_text):
 
 if input_method == "Enter text manually":
     user_input = st.text_area(
-        "Enter your text:",
+        "Enter your topic or keywords:",
         height=150,
-        placeholder="Enter the text you want to process..."
+        placeholder="Enter the topic you want to create content about..."
     )
     
-    if st.button("Generate"):
+    if st.button("Generate Professional Content"):
         generate_content(user_input)
 else:
     uploaded_file = st.file_uploader("Upload a text file:", type=["txt"])
