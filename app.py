@@ -197,7 +197,7 @@ def format_content_with_images(content, images, title):
     # Add image gallery
     formatted_content += '<div class="gallery-title">Image Gallery</div>'
     formatted_content += '<div class="image-gallery">'
-    for img in images[-5:]:  # Use last 5 images for gallery
+    for img in images[-6:]:  # Use last 5 images for gallery
         formatted_content += f'<img src="{img["url"]}" alt="{img["title"]}" class="gallery-image" onclick="window.open(this.src)">'
     formatted_content += '</div>'
     
