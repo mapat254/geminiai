@@ -95,41 +95,37 @@ def generate_engaging_title(model, topic):
     """Generate a professional and engaging title with high CPM and low competition focus"""
     current_time = int(time.time())
     title_prompt = f"""
-    As a professional headline writer specializing in high-CPM, low-competition content, create ONE compelling title about: {topic}
+    As an expert headline writer specializing in viral content and unique angles, create ONE compelling title about: {topic}
     Current timestamp: {current_time}
 
-    The title should:
-    - Target high-CPM niches (finance, insurance, technology, B2B, luxury lifestyle)
-    - Use long-tail keywords for lower competition
-    - Include numbers or specific data points
-    - Be 50-60 characters long
-    - Use one of these proven high-CPM formats:
-        - "X Hidden [Luxury/Premium] [Topic] Secrets Worth [High Value]"
-        - "Why [Expensive Product] Buyers Are Switching to [Alternative]"
-        - "The [X]-Figure Guide to [Premium Service/Product]"
-        - "Insider: [High-Value Industry] Experts Reveal [Exclusive Info]"
-        - "How [Premium Brand] [Achieved Result] Without [Common Method]"
+    Requirements for the perfect title:
+    - Must be completely unique and never-before-seen
+    - Use unexpected word combinations or metaphors
+    - Include specific, unusual numbers (avoid round numbers)
+    - Target length: 45-60 characters
+    - Must create intense curiosity
     
-    Focus on:
-    - Premium/luxury angles
-    - B2B or professional contexts
-    - High-value transactions
-    - Exclusive or insider information
-    - Wealth-building or investment themes
+    Use one of these unique title formats:
+    - "The {number} Minute {topic} Hack That {unexpected benefit}"
+    - "Why {common belief} Is Actually {surprising truth}: {specific data point}"
+    - "How {unusual method} Can {desired outcome} ({specific metric})"
+    - "The Forgotten {ancient/historical reference} Secret to {modern topic}"
+    - "What {unexpected profession} Can Teach Us About {topic}"
     
-    Use power words like:
-    - Premium, Luxury, Elite
-    - Investment, ROI, Revenue
-    - Professional, Executive
-    - Exclusive, Private, Insider
-    - High-End, Premium, Custom
-
+    Advanced techniques to use:
+    - Combine concepts from different fields
+    - Use contrast between old and new
+    - Include specific, unusual metrics
+    - Reference unexpected experts or sources
+    - Create intrigue through partial revelation
+    
     Return ONLY the title, no explanations or additional text.
+    Make it impossible to resist clicking.
     """
     
     generation_config = genai.types.GenerationConfig(
         candidate_count=1,
-        temperature=0.8,
+        temperature=0.9,
         top_p=0.95,
         top_k=64,
     )
@@ -291,18 +287,32 @@ if input_method == "Enter text manually":
                     # Generate content with proper configuration
                     current_time = int(time.time())
                     content_prompt = f"""
-                    Write a detailed article about: {user_input}
+                    Write a comprehensive, engaging, and detailed 3000-word article about: {user_input}
                     Use this title: {st.session_state.generated_title}
-                    Current timestamp: {current_time}  # This ensures different results each time
+                    Current timestamp: {current_time}
                     
-                    Requirements:
-                    - Write in a professional, engaging style
-                    - Break content into clear paragraphs
-                    - Include specific examples and data
+                    Article Requirements:
+                    - Exactly 3000 words
+                    - Divide into clear sections with subheadings
+                    - Include expert insights and analysis
                     - Use storytelling techniques
-                    - Add actionable insights
-                    - Make it comprehensive but accessible
-                    - Ensure content is unique and different from previous generations
+                    - Add real-world examples
+                    - Include data and statistics
+                    - Make it highly engaging and informative
+                    - Use a conversational yet professional tone
+                    - Break down complex concepts
+                    - End with actionable takeaways
+                    
+                    Structure:
+                    1. Compelling introduction (300 words)
+                    2. Background/Context (400 words)
+                    3. Main analysis (1500 words)
+                    4. Expert insights (400 words)
+                    5. Practical applications (300 words)
+                    6. Conclusion with actionable steps (100 words)
+                    
+                    Make every section unique and valuable.
+                    Focus on depth and quality.
                     """
                     
                     generation_config = genai.types.GenerationConfig(
@@ -351,18 +361,32 @@ else:  # File upload
                         # Generate content with proper configuration
                         current_time = int(time.time())
                         content_prompt = f"""
-                        Write a detailed article about this topic: {content}
+                        Write a comprehensive, engaging, and detailed 3000-word article about this topic: {content}
                         Use this title: {st.session_state.generated_title}
-                        Current timestamp: {current_time}  # This ensures different results each time
+                        Current timestamp: {current_time}
                         
-                        Requirements:
-                        - Write in a professional, engaging style
-                        - Break content into clear paragraphs
-                        - Include specific examples and data
+                        Article Requirements:
+                        - Exactly 3000 words
+                        - Divide into clear sections with subheadings
+                        - Include expert insights and analysis
                         - Use storytelling techniques
-                        - Add actionable insights
-                        - Make it comprehensive but accessible
-                        - Ensure content is unique and different from previous generations
+                        - Add real-world examples
+                        - Include data and statistics
+                        - Make it highly engaging and informative
+                        - Use a conversational yet professional tone
+                        - Break down complex concepts
+                        - End with actionable takeaways
+                        
+                        Structure:
+                        1. Compelling introduction (300 words)
+                        2. Background/Context (400 words)
+                        3. Main analysis (1500 words)
+                        4. Expert insights (400 words)
+                        5. Practical applications (300 words)
+                        6. Conclusion with actionable steps (100 words)
+                        
+                        Make every section unique and valuable.
+                        Focus on depth and quality.
                         """
                         
                         generation_config = genai.types.GenerationConfig(
