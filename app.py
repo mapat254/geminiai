@@ -92,29 +92,37 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def generate_engaging_title(model, topic):
-    """Generate a professional and engaging title with randomization"""
-    current_time = int(time.time())  # Add timestamp for variation
+    """Generate a professional and engaging title with high CPM and low competition focus"""
+    current_time = int(time.time())
     title_prompt = f"""
-    As a professional headline writer, create ONE compelling title for an article about: {topic}
-    Current timestamp: {current_time}  # This ensures different results each time
+    As a professional headline writer specializing in high-CPM, low-competition content, create ONE compelling title about: {topic}
+    Current timestamp: {current_time}
 
     The title should:
-    - Use power words that evoke emotion or curiosity
-    - Include a specific benefit or promise
+    - Target high-CPM niches (finance, insurance, technology, B2B, luxury lifestyle)
+    - Use long-tail keywords for lower competition
+    - Include numbers or specific data points
     - Be 50-60 characters long
-    - Use one of these formats:
-        - "The Secret to [Desired Outcome]: [Unexpected Approach]"
-        - "[Number] Hidden [Topic] Strategies That [Benefit]"
-        - "Why [Common Belief] Is Wrong: [Surprising Truth]"
-        - "Inside the [Topic]: [Intriguing Discovery]"
-        - "The [Adjective] Guide to [Topic] That [Benefit]"
+    - Use one of these proven high-CPM formats:
+        - "X Hidden [Luxury/Premium] [Topic] Secrets Worth [High Value]"
+        - "Why [Expensive Product] Buyers Are Switching to [Alternative]"
+        - "The [X]-Figure Guide to [Premium Service/Product]"
+        - "Insider: [High-Value Industry] Experts Reveal [Exclusive Info]"
+        - "How [Premium Brand] [Achieved Result] Without [Common Method]"
     
     Focus on:
-    - Creating curiosity gaps
-    - Using specific numbers or data
-    - Adding emotional triggers
-    - Making bold claims (that the content can support)
-    - Using power words like: Essential, Proven, Secret, Hidden, Revolutionary
+    - Premium/luxury angles
+    - B2B or professional contexts
+    - High-value transactions
+    - Exclusive or insider information
+    - Wealth-building or investment themes
+    
+    Use power words like:
+    - Premium, Luxury, Elite
+    - Investment, ROI, Revenue
+    - Professional, Executive
+    - Exclusive, Private, Insider
+    - High-End, Premium, Custom
 
     Return ONLY the title, no explanations or additional text.
     """
@@ -197,7 +205,7 @@ def format_content_with_images(content, images, title):
     # Add image gallery
     formatted_content += '<div class="gallery-title">Image Gallery</div>'
     formatted_content += '<div class="image-gallery">'
-    for img in images[-6:]:  # Use last 5 images for gallery
+    for img in images[-5:]:  # Use last 5 images for gallery
         formatted_content += f'<img src="{img["url"]}" alt="{img["title"]}" class="gallery-image" onclick="window.open(this.src)">'
     formatted_content += '</div>'
     
