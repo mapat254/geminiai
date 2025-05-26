@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
 import json
-import markdown
 import random
 import time
 from datetime import datetime
@@ -78,22 +77,25 @@ def generate_meta_description(model, topic, title):
     return response.text.strip()
 
 def generate_article_content(model, topic, title):
-    """Generate comprehensive article content"""
+    """Generate comprehensive article content in HTML format"""
     content_prompt = f"""
     Write a comprehensive, SEO-optimized article about: {topic}
     Title: {title}
     
     Requirements:
     - 2000-3000 words
-    - Natural keyword placement
-    - Engaging introduction
-    - Clear sections with subheadings
-    - Actionable insights and tips
-    - Expert tone of voice
-    - Conclusion with call-to-action
+    - Format the content in HTML with proper structure
+    - Use <h2> for main sections
+    - Use <h3> for subsections
+    - Use <p> for paragraphs
+    - Use <ul> and <li> for lists
     - Include relevant statistics and examples
+    - Add proper spacing between sections
+    - Make content visually appealing and easy to read
+    - Include a strong introduction and conclusion
+    - Add calls-to-action where appropriate
     
-    Format the content with proper markdown headings and paragraphs.
+    Return the content in clean HTML format.
     """
     
     generation_config = {
@@ -144,7 +146,8 @@ def search_bing_images(query, num_images=15):
 
 def format_content_with_images(content, images, title, meta_description):
     """Format content with images interspersed"""
-    paragraphs = content.split('\n\n')
+    # Split content into sections (assuming they're separated by </h2> tags)
+    sections = content.split('</h2>')
     formatted_content = []
     
     # Add meta description
@@ -152,19 +155,27 @@ def format_content_with_images(content, images, title, meta_description):
     
     # Add featured image
     if images:
-        formatted_content.append(f'<img src="{images[0]["url"]}" alt="{title}" class="featured-image">')
+        formatted_content.append(f'<div class="featured-image-container"><img src="{images[0]["url"]}" alt="{title}" class="featured-image"></div>')
     
     # Intersperse content with images
     image_index = 1
-    for i, paragraph in enumerate(paragraphs):
-        formatted_content.append(paragraph)
-        
-        # Add an image every 3-4 paragraphs
-        if i % 3 == 0 and image_index < len(images) - 3:
-            formatted_content.append(f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">')
-            image_index += 1
+    for i, section in enumerate(sections):
+        if i == 0:  # First section
+            formatted_content.append(section + '</h2>' if i < len(sections)-1 else section)
+        else:
+            formatted_content.append(section + '</h2>' if i < len(sections)-1 else section)
+            
+            # Add an image after every other section
+            if i % 2 == 0 and image_index < len(images):
+                formatted_content.append(
+                    f'<div class="content-image-container">'
+                    f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">'
+                    f'<p class="image-caption">{images[image_index]["title"]}</p>'
+                    f'</div>'
+                )
+                image_index += 1
     
-    return '\n\n'.join(formatted_content)
+    return '\n'.join(formatted_content)
 
 def generate_blog_html(title, content, meta_description, images, site_name="My Blog", site_description=""):
     """Generate complete blog HTML using the template"""
