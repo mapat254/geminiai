@@ -88,31 +88,39 @@ st.markdown("""
         margin: 40px 0 20px 0;
         color: #1E40AF;
     }
+    .meta-description {
+        color: #4B5563;
+        font-size: 1rem;
+        margin: 10px 0 20px 0;
+        padding: 10px;
+        background: #F3F4F6;
+        border-radius: 4px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 def generate_engaging_title(model, topic):
-    """Generate a professional and SEO-friendly title"""
+    """Generate a professional and SEO-optimized title"""
     current_time = int(time.time())
     title_prompt = f"""
-    Create one engaging and professional title about: {topic}
+    Create one SEO-optimized title about: {topic}
     Current timestamp: {current_time}
 
-    Make it:
-    - Natural and compelling
-    - 50-60 characters long
-    - Include the main topic naturally
-    - Professional but engaging
-    - Unique and original
-    - Focus on value
-    - Include specific benefits when relevant
+    Requirements:
+    - Include primary keyword naturally
+    - 50-60 characters (optimal for search engines)
+    - Use power words that drive clicks
+    - Include numbers or specific benefits when relevant
+    - Match search intent
+    - Avoid clickbait while maintaining interest
+    - Use proven title structures that rank well
     
-    Return only the title itself, no additional text or formatting.
+    Return only the optimized title, no additional text.
     """
     
     generation_config = genai.types.GenerationConfig(
         candidate_count=1,
-        temperature=0.9,
+        temperature=0.8,
         top_p=0.95,
         top_k=64,
     )
@@ -120,12 +128,38 @@ def generate_engaging_title(model, topic):
     response = model.generate_content(title_prompt, generation_config=generation_config)
     return response.text.strip().replace('"', '').replace('#', '').strip()
 
+def generate_meta_description(model, topic, title):
+    """Generate an SEO-optimized meta description"""
+    meta_prompt = f"""
+    Create a compelling meta description for an article about {topic} with title: {title}
+
+    Requirements:
+    - 150-160 characters long
+    - Include primary keyword naturally
+    - Clear value proposition
+    - Call-to-action
+    - Match search intent
+    - Avoid truncation in search results
+    
+    Return only the meta description, no additional text.
+    """
+    
+    generation_config = genai.types.GenerationConfig(
+        candidate_count=1,
+        temperature=0.7,
+        top_p=0.95,
+        top_k=64,
+    )
+    
+    response = model.generate_content(meta_prompt, generation_config=generation_config)
+    return response.text.strip()
+
 def search_bing_images(query, num_images=15):
     try:
         variations = [
-            f"{query} {random.choice(['professional', 'expert', 'guide', 'tutorial'])}",
-            f"{query} {random.choice(['best practices', 'industry leading', 'top rated'])}",
-            f"{query} {random.choice(['2024 trends', 'latest developments', 'current'])}"
+            f"{query} {random.choice(['guide', 'tutorial', 'expert advice'])}",
+            f"{query} {random.choice(['best practices', 'professional tips', 'industry insights'])}",
+            f"{query} {random.choice(['2024 trends', 'latest developments', 'current examples'])}"
         ]
         
         headers = {
@@ -162,15 +196,15 @@ def search_bing_images(query, num_images=15):
         st.error(f"Error searching images: {str(e)}")
         return []
 
-def format_content_with_images(content, images, title):
+def format_content_with_images(content, images, title, meta_description):
     paragraphs = [p for p in content.split('\n\n') if p.strip()]
     formatted_content = f'<div class="content-title">{title}</div>'
+    formatted_content += f'<div class="meta-description">{meta_description}</div>'
     
     if images:
-        formatted_content += f'<img src="{images[0]["url"]}" alt="{images[0]["title"]}" class="content-image">'
+        formatted_content += f'<img src="{images[0]["url"]}" alt="{title}" class="content-image">'
     
     for i, paragraph in enumerate(paragraphs):
-        # Remove markdown headings and formatting
         clean_paragraph = paragraph.replace('#', '').strip()
         clean_paragraph = clean_paragraph.replace('***', '').replace('**', '').replace('*', '')
         formatted_content += f'<div class="content-paragraph">{clean_paragraph}</div>'
@@ -198,9 +232,11 @@ if 'images' not in st.session_state:
     st.session_state.images = []
 if 'generated_title' not in st.session_state:
     st.session_state.generated_title = None
+if 'meta_description' not in st.session_state:
+    st.session_state.meta_description = None
 
 # App title
-st.markdown('<div class="main-title">Professional Content Generator</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">SEO-Optimized Content Generator</div>', unsafe_allow_html=True)
 
 # Sidebar configuration
 with st.sidebar:
@@ -228,7 +264,7 @@ with st.sidebar:
             st.error("Please enter an API key.")
 
 # Main content area
-st.markdown("### Generate Professional Content")
+st.markdown("### Generate SEO-Optimized Content")
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
 input_method = st.radio(
@@ -246,29 +282,39 @@ def generate_content(input_text):
         return
     
     try:
-        with st.spinner("Generating professional content..."):
+        with st.spinner("Generating SEO-optimized content..."):
             model = genai.GenerativeModel(model_name=st.session_state.model)
             st.session_state.generated_title = generate_engaging_title(model, input_text)
+            st.session_state.meta_description = generate_meta_description(model, input_text, st.session_state.generated_title)
             
             current_time = int(time.time())
             content_prompt = f"""
-            Write a comprehensive and engaging article about: {input_text}
+            Write a comprehensive, SEO-optimized article about: {input_text}
             Title: {st.session_state.generated_title}
             Current timestamp: {current_time}
             
-            Guidelines:
-            - Write naturally, as if for a professional blog or magazine
-            - Length: 3000 words
-            - Include relevant examples and case studies
-            - Share practical advice and actionable tips
-            - Use a conversational yet professional tone
-            - Break complex topics into digestible sections
-            - Include relevant data and expert insights
-            - Focus on providing value to the reader
+            SEO Requirements:
+            - Natural keyword placement (2-3% density)
+            - Long-form content (3000 words)
+            - LSI keywords and related terms
+            - Semantic relevance
+            - Internal linking opportunities
+            - Featured snippet potential
+            - E-A-T signals
             
-            Structure the content naturally with clear sections, but do not use explicit headings or markdown formatting.
-            Make the content flow smoothly from one topic to the next.
-            Focus on readability and engagement while maintaining professionalism.
+            Content Guidelines:
+            - Start with a compelling hook
+            - Use natural paragraph transitions
+            - Include expert insights and statistics
+            - Add real-world examples
+            - Provide actionable advice
+            - Use engaging subheadings naturally
+            - Optimize for featured snippets
+            - Include FAQ-style content
+            - End with a strong conclusion
+            
+            Write in a natural, flowing style without explicit formatting or markers.
+            Focus on both reader engagement and search engine optimization.
             """
             
             generation_config = genai.types.GenerationConfig(
@@ -285,7 +331,8 @@ def generate_content(input_text):
         formatted_content = format_content_with_images(
             st.session_state.generated_content,
             st.session_state.images,
-            st.session_state.generated_title
+            st.session_state.generated_title,
+            st.session_state.meta_description
         )
         st.markdown(formatted_content, unsafe_allow_html=True)
         
@@ -296,10 +343,10 @@ if input_method == "Enter text manually":
     user_input = st.text_area(
         "Enter your topic or keywords:",
         height=150,
-        placeholder="Enter the topic you want to create content about..."
+        placeholder="Enter the main topic or keywords for your SEO-optimized content..."
     )
     
-    if st.button("Generate Professional Content"):
+    if st.button("Generate SEO Content"):
         generate_content(user_input)
 else:
     uploaded_file = st.file_uploader("Upload a text file:", type=["txt"])
