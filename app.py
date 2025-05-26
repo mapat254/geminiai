@@ -91,6 +91,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+TITLE_FORMATS = [
+    "The {number} Minute {topic} Hack That {unexpected_benefit}",
+    "Why {common_belief} Is Actually {surprising_truth}: {specific_data_point}",
+    "How {unusual_method} Can {desired_outcome} ({specific_metric})",
+    "The Forgotten {ancient_historical_reference} Secret to {modern_topic}",
+    "What {unexpected_profession} Can Teach Us About {topic}"
+]
+
 def generate_engaging_title(model, topic):
     """Generate a professional and engaging title with high CPM and low competition focus"""
     current_time = int(time.time())
@@ -106,11 +114,7 @@ def generate_engaging_title(model, topic):
     - Must create intense curiosity
     
     Use one of these unique title formats:
-    - "The {number} Minute {topic} Hack That {unexpected benefit}"
-    - "Why {common belief} Is Actually {surprising truth}: {specific data point}"
-    - "How {unusual method} Can {desired outcome} ({specific metric})"
-    - "The Forgotten {ancient/historical reference} Secret to {modern topic}"
-    - "What {unexpected profession} Can Teach Us About {topic}"
+    {chr(10).join(f'- "{format}"' for format in TITLE_FORMATS)}
     
     Advanced techniques to use:
     - Combine concepts from different fields
@@ -135,7 +139,6 @@ def generate_engaging_title(model, topic):
 
 def search_bing_images(query, num_images=15):
     try:
-        # Add randomization to search query
         variations = [
             f"{query} {random.choice(['guide', 'tutorial', 'tips', 'examples', 'ideas'])}",
             f"{query} {random.choice(['professional', 'modern', 'creative', 'innovative'])}",
@@ -163,7 +166,6 @@ def search_bing_images(query, num_images=15):
                 except:
                     continue
         
-        # Shuffle and return unique images
         random.shuffle(all_images)
         seen_urls = set()
         unique_images = []
@@ -178,37 +180,26 @@ def search_bing_images(query, num_images=15):
         return []
 
 def format_content_with_images(content, images, title):
-    # Split content into paragraphs
     paragraphs = [p for p in content.split('\n\n') if p.strip()]
-    
-    # Initialize formatted content with title
     formatted_content = f'<div class="content-title">{title}</div>'
     
-    # Add first image after title
     if images:
         formatted_content += f'<img src="{images[0]["url"]}" alt="{images[0]["title"]}" class="content-image">'
     
-    # Interleave remaining paragraphs and images
     for i, paragraph in enumerate(paragraphs):
-        # Add paragraph
         formatted_content += f'<div class="content-paragraph">{paragraph}</div>'
         
-        # Add image if available (skip first image as it's already used)
         image_index = i + 1
-        if image_index < len(images) - 5:  # Reserve last 5 images for gallery
+        if image_index < len(images) - 5:
             formatted_content += f'<img src="{images[image_index]["url"]}" alt="{images[image_index]["title"]}" class="content-image">'
     
-    # Add image gallery
     formatted_content += '<div class="gallery-title">Image Gallery</div>'
     formatted_content += '<div class="image-gallery">'
-    for img in images[-5:]:  # Use last 5 images for gallery
+    for img in images[-6:]:
         formatted_content += f'<img src="{img["url"]}" alt="{img["title"]}" class="gallery-image" onclick="window.open(this.src)">'
     formatted_content += '</div>'
     
     return formatted_content
-
-# App title
-st.markdown('<div class="main-title">AI Content Generator</div>', unsafe_allow_html=True)
 
 # Initialize session state
 if 'api_key' not in st.session_state:
@@ -222,18 +213,19 @@ if 'images' not in st.session_state:
 if 'generated_title' not in st.session_state:
     st.session_state.generated_title = None
 
+# App title
+st.markdown('<div class="main-title">AI Content Generator</div>', unsafe_allow_html=True)
+
 # Sidebar configuration
 with st.sidebar:
     st.markdown("### Configuration")
     
-    # API Key input
     api_key = st.text_input(
         "Enter your Gemini API key:",
         type="password",
         value=st.session_state.api_key
     )
     
-    # Model selection
     model = st.selectbox(
         "Select Model:",
         ["gemini-1.5-flash", "gemini-1.5-pro"],
@@ -251,15 +243,77 @@ with st.sidebar:
 
 # Main content area
 st.markdown("### Generate Content")
-
 st.markdown('<div class="card">', unsafe_allow_html=True)
 
-# Input method selection
 input_method = st.radio(
     "Choose input method:",
     ["Enter text manually", "Upload a file"],
     horizontal=True
 )
+
+def generate_content(input_text):
+    if not st.session_state.api_key:
+        st.error("Please configure your API key in the sidebar first.")
+        return
+    elif not input_text:
+        st.error("Please enter some text to process.")
+        return
+    
+    try:
+        with st.spinner("Generating content..."):
+            model = genai.GenerativeModel(model_name=st.session_state.model)
+            st.session_state.generated_title = generate_engaging_title(model, input_text)
+            
+            current_time = int(time.time())
+            content_prompt = f"""
+            Write a comprehensive, engaging, and detailed 3000-word article about: {input_text}
+            Use this title: {st.session_state.generated_title}
+            Current timestamp: {current_time}
+            
+            Article Requirements:
+            - Exactly 3000 words
+            - Divide into clear sections with subheadings
+            - Include expert insights and analysis
+            - Use storytelling techniques
+            - Add real-world examples
+            - Include data and statistics
+            - Make it highly engaging and informative
+            - Use a conversational yet professional tone
+            - Break down complex concepts
+            - End with actionable takeaways
+            
+            Structure:
+            1. Compelling introduction (300 words)
+            2. Background/Context (400 words)
+            3. Main analysis (1500 words)
+            4. Expert insights (400 words)
+            5. Practical applications (300 words)
+            6. Conclusion with actionable steps (100 words)
+            
+            Make every section unique and valuable.
+            Focus on depth and quality.
+            """
+            
+            generation_config = genai.types.GenerationConfig(
+                candidate_count=1,
+                temperature=0.8,
+                top_p=0.95,
+                top_k=64,
+            )
+            
+            response = model.generate_content(content_prompt, generation_config=generation_config)
+            st.session_state.generated_content = response.text
+            st.session_state.images = search_bing_images(input_text, num_images=15)
+        
+        formatted_content = format_content_with_images(
+            st.session_state.generated_content,
+            st.session_state.images,
+            st.session_state.generated_title
+        )
+        st.markdown(formatted_content, unsafe_allow_html=True)
+        
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
 
 if input_method == "Enter text manually":
     user_input = st.text_area(
@@ -269,148 +323,13 @@ if input_method == "Enter text manually":
     )
     
     if st.button("Generate"):
-        if not st.session_state.api_key:
-            st.error("Please configure your API key in the sidebar first.")
-        elif not user_input:
-            st.error("Please enter some text to process.")
-        else:
-            try:
-                with st.spinner("Generating content..."):
-                    # Initialize the model
-                    model = genai.GenerativeModel(
-                        model_name=st.session_state.model
-                    )
-                    
-                    # Generate engaging title first
-                    st.session_state.generated_title = generate_engaging_title(model, user_input)
-                    
-                    # Generate content with proper configuration
-                    current_time = int(time.time())
-                    content_prompt = f"""
-                    Write a comprehensive, engaging, and detailed 3000-word article about: {user_input}
-                    Use this title: {st.session_state.generated_title}
-                    Current timestamp: {current_time}
-                    
-                    Article Requirements:
-                    - Exactly 3000 words
-                    - Divide into clear sections with subheadings
-                    - Include expert insights and analysis
-                    - Use storytelling techniques
-                    - Add real-world examples
-                    - Include data and statistics
-                    - Make it highly engaging and informative
-                    - Use a conversational yet professional tone
-                    - Break down complex concepts
-                    - End with actionable takeaways
-                    
-                    Structure:
-                    1. Compelling introduction (300 words)
-                    2. Background/Context (400 words)
-                    3. Main analysis (1500 words)
-                    4. Expert insights (400 words)
-                    5. Practical applications (300 words)
-                    6. Conclusion with actionable steps (100 words)
-                    
-                    Make every section unique and valuable.
-                    Focus on depth and quality.
-                    """
-                    
-                    generation_config = genai.types.GenerationConfig(
-                        candidate_count=1,
-                        temperature=0.8,
-                        top_p=0.95,
-                        top_k=64,
-                    )
-                    
-                    response = model.generate_content(content_prompt, generation_config=generation_config)
-                    st.session_state.generated_content = response.text
-                    
-                    # Search for relevant images with increased count
-                    st.session_state.images = search_bing_images(user_input, num_images=15)
-                
-                # Format and display content with interleaved images and gallery
-                formatted_content = format_content_with_images(
-                    st.session_state.generated_content,
-                    st.session_state.images,
-                    st.session_state.generated_title
-                )
-                st.markdown(formatted_content, unsafe_allow_html=True)
-                
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-else:  # File upload
+        generate_content(user_input)
+else:
     uploaded_file = st.file_uploader("Upload a text file:", type=["txt"])
     
     if uploaded_file is not None:
         content = uploaded_file.read().decode("utf-8")
         if st.button("Process File"):
-            if not st.session_state.api_key:
-                st.error("Please configure your API key in the sidebar first.")
-            else:
-                try:
-                    with st.spinner("Processing file..."):
-                        # Initialize the model
-                        model = genai.GenerativeModel(
-                            model_name=st.session_state.model
-                        )
-                        
-                        # Generate engaging title first
-                        st.session_state.generated_title = generate_engaging_title(model, content[:200])
-                        
-                        # Generate content with proper configuration
-                        current_time = int(time.time())
-                        content_prompt = f"""
-                        Write a comprehensive, engaging, and detailed 3000-word article about this topic: {content}
-                        Use this title: {st.session_state.generated_title}
-                        Current timestamp: {current_time}
-                        
-                        Article Requirements:
-                        - Exactly 3000 words
-                        - Divide into clear sections with subheadings
-                        - Include expert insights and analysis
-                        - Use storytelling techniques
-                        - Add real-world examples
-                        - Include data and statistics
-                        - Make it highly engaging and informative
-                        - Use a conversational yet professional tone
-                        - Break down complex concepts
-                        - End with actionable takeaways
-                        
-                        Structure:
-                        1. Compelling introduction (300 words)
-                        2. Background/Context (400 words)
-                        3. Main analysis (1500 words)
-                        4. Expert insights (400 words)
-                        5. Practical applications (300 words)
-                        6. Conclusion with actionable steps (100 words)
-                        
-                        Make every section unique and valuable.
-                        Focus on depth and quality.
-                        """
-                        
-                        generation_config = genai.types.GenerationConfig(
-                            candidate_count=1,
-                            temperature=0.8,
-                            top_p=0.95,
-                            top_k=64,
-                        )
-                        
-                        response = model.generate_content(content_prompt, generation_config=generation_config)
-                        st.session_state.generated_content = response.text
-                        
-                        # Search for relevant images with increased count
-                        st.session_state.images = search_bing_images(content[:100], num_images=15)
-                    
-                    # Format and display content with interleaved images and gallery
-                    formatted_content = format_content_with_images(
-                        st.session_state.generated_content,
-                        st.session_state.images,
-                        st.session_state.generated_title
-                    )
-                    st.markdown(formatted_content, unsafe_allow_html=True)
-                    
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
+            generate_content(content)
 
 st.markdown('</div>', unsafe_allow_html=True)
