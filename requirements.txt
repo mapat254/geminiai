@@ -1,3 +1,8 @@
 streamlit
+langdetect
+langcodes
 google-generativeai
+markdown
+requests
+beautifulsoup4
 python-dotenv
